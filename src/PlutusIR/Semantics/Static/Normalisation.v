@@ -116,11 +116,32 @@ Inductive normalise : ty -> ty -> Prop :=
 
 #[export] Hint Constructors normalise : core.
 
-(* TODO: Implement*)
+(* TODO: Use function with measure? *)
 Fixpoint normalise_check (ty : PlutusIR.ty) : (option PlutusIR.ty) :=
   match ty with
-  | Ty_Var x => Some (Ty_Var x)
-  | _ => None
+  | Ty_App T1 T2 => None
+  | Ty_Fun T1 T2 => 
+    match normalise_check T1, normalise_check T2 with
+    | Some T1n, Some T2n => Some (Ty_Fun T1n T2n)
+    | _, _ => None
+    end
+  | Ty_Forall bX K T0 =>
+    match normalise_check T0 with
+    | Some T0n => Some (Ty_Forall bX K T0n)
+    | _ => None
+    end
+  | Ty_Lam bX K T0 =>
+    match normalise_check T0 with
+    | Some T0n => Some (Ty_Lam bX K T0n)
+    | _ => None
+    end
+  | Ty_Var X => Some (Ty_Var X)
+  | Ty_IFix F T =>
+    match (normalise_check F, normalise_check T) with
+    | (Some Fn, Some Tn) => Some (Ty_IFix Fn Tn)
+    | (_, _) => None
+    end
+  | Ty_Builtin st => Some (Ty_Builtin st)
   end.
 
 Theorem normalise_checking_sound : forall ty tyn,
