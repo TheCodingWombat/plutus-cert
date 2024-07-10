@@ -73,6 +73,25 @@ with neutral_Ty : ty -> Prop :=
       normal_Ty T2 ->
       neutral_Ty (Ty_App T1 T2).
 
+
+Fixpoint is_neutral_Ty (t : ty) : bool :=
+  match t with
+  | Ty_Var _ => true
+  | Ty_App T1 T2 => is_neutral_Ty T1 && is_normal_Ty T2
+  | _ => false
+  end
+with is_normal_Ty (t : ty) : bool :=
+  match t with
+  | Ty_Lam _ _ T => is_normal_Ty T
+  | Ty_Fun T1 T2 => is_normal_Ty T1 && is_normal_Ty T2
+  | Ty_Forall _ _ T => is_normal_Ty T
+  | Ty_IFix F T => is_normal_Ty F && is_normal_Ty T
+  | Ty_Builtin _ => true
+  (* Cannot call is_neutral on t directly, as it is a mutual recursion *)
+  | Ty_App T1 T2 => is_neutral_Ty T1 && is_normal_Ty T2 
+  | Ty_Var _ => true
+  end.
+
 Scheme normal_Ty__ind := Minimality for normal_Ty Sort Prop
   with neutral_Ty__ind := Minimality for neutral_Ty Sort Prop.
 
@@ -117,9 +136,21 @@ Inductive normalise : ty -> ty -> Prop :=
 #[export] Hint Constructors normalise : core.
 
 (* TODO: Use function with measure? *)
-Fixpoint normalise_check (ty : PlutusIR.ty) : (option PlutusIR.ty) :=
+Program Fixpoint normalise_check (ty : PlutusIR.ty) {measure 1} : (option PlutusIR.ty) :=
   match ty with
-  | Ty_App T1 T2 => None
+  | Ty_App T1 T2 =>
+    match normalise_check T1 with
+    | Some T1n => 
+      match normalise_check T2 with
+      | Some T2n => 
+        match T1n with
+        | Ty_Lam bX K T1n_body => normalise_check (substituteTCA bX T2n T1n)
+        | _ => if is_neutral_Ty T1n then Some (Ty_App T1n T2n) else None
+        end
+      | None => None
+      end
+    | _ => None
+    end
   | Ty_Fun T1 T2 => 
     match normalise_check T1, normalise_check T2 with
     | Some T1n, Some T2n => Some (Ty_Fun T1n T2n)
@@ -143,6 +174,8 @@ Fixpoint normalise_check (ty : PlutusIR.ty) : (option PlutusIR.ty) :=
     end
   | Ty_Builtin st => Some (Ty_Builtin st)
   end.
+
+Admit Obligations.
 
 Theorem normalise_checking_sound : forall ty tyn,
   normalise_check ty = Some tyn -> normalise ty tyn.
