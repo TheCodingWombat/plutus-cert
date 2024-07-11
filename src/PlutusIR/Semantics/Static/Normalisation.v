@@ -1,9 +1,16 @@
+From Equations Require Import Equations.
 Require Import PlutusCert.PlutusIR.
 Require Import Strings.String.
+Require Export PlutusCert.PlutusIR.Semantics.Static.Kinding.
 
 Require Export PlutusCert.PlutusIR.Semantics.Static.TypeSubstitution.
+Require Import List.
+Import ListNotations.
+Require Import Bool.
 
-(** Type equality *)
+Require Import Lia.
+
+(* Type equality *)
 Reserved Notation "T1 '=b' T2" (at level 40).
 Inductive EqT : ty -> ty -> Prop :=
   (* Beta-reduction *)
@@ -103,10 +110,10 @@ Combined Scheme normal_Ty__multind from
 
 (** Type normalisation *)
 Inductive normalise : ty -> ty -> Prop :=
-  | N_BetaReduce : forall bX K T1 T2 T1n T2n T,
-      normalise T1 (Ty_Lam bX K T1n) ->
+  | N_BetaReduce : forall bX K T1 T2 T1n_body T2n T,
+      normalise T1 (Ty_Lam bX K T1n_body) ->
       normalise T2 T2n ->
-      normalise (substituteTCA bX T2n T1n) T ->
+      normalise (substituteTCA bX T2n T1n_body) T ->
       normalise (Ty_App T1 T2) T
   | N_TyApp : forall T1 T2 T1n T2n,
       normalise T1 T1n ->
@@ -135,57 +142,94 @@ Inductive normalise : ty -> ty -> Prop :=
 
 #[export] Hint Constructors normalise : core.
 
-(* TODO: Use function with measure? *)
-Program Fixpoint normalise_check (ty : PlutusIR.ty) {measure 1} : (option PlutusIR.ty) :=
-  match ty with
-  | Ty_App T1 T2 =>
-    match normalise_check T1 with
-    | Some T1n => 
-      match normalise_check T2 with
-      | Some T2n => 
+Definition relation (X : Type) := X -> X -> Prop.
+Inductive multi {X : Type} (R : relation X) : relation X :=
+  | multi_refl : forall (x : X), multi R x x
+  | multi_step : forall (x y z : X),
+                    R x y ->
+                    multi R y z ->
+                    multi R x z.
+
+Notation multistep := (multi normalise).
+Notation "t1 '-->*' t2" := (multistep t1 t2) (at level 40).
+
+Definition halts (t : ty) : Prop := exists t', and (t -->* t') (normal_Ty t').
+
+(* Main theorem that shows that normalization terminates for well kinded terms*)
+Theorem strong_normalization : forall T K,
+  [] |-* T : K -> halts T.
+Proof.
+Admitted.
+
+
+(* TODO: Use function with measure?
+Equations? normalise_check_easy (ty : PlutusIR.ty) : (option PlutusIR.ty) by wf (size ty):=
+    (* Simplified version of Ty_App that is enough for the difficult termination proof *)
+  normalise_check_easy (Ty_App T1 T2) =>
+    match T1 with
+    | Ty_Lam bX K T1_body => normalise_check_easy (substituteTCA bX T2 T1_body)
+    | _ => if is_neutral_Ty T1 then Some (Ty_App T1 T2) else None
+    end;
+  normalise_check_easy (Ty_Lam bX K T0) =>
+    match normalise_check_easy T0 with
+    | Some T0n => Some (Ty_Lam bX K T0n)
+    | _ => None
+    end;
+  normalise_check_easy t => Some t.
+Proof.
+Abort. *)
+  
+  
+(* Equations normalise_check (ty : PlutusIR.ty) : (option PlutusIR.ty) :=
+  (* normalise_check (Ty_App T1 T2) =>
+    match normalise_check T1, normalise_check T2 with
+    | Some T1n, Some T2n => 
         match T1n with
-        | Ty_Lam bX K T1n_body => normalise_check (substituteTCA bX T2n T1n)
+        | Ty_Lam bX K T1n_body => normalise_check (substituteTCA bX T2n T1n_body)
         | _ => if is_neutral_Ty T1n then Some (Ty_App T1n T2n) else None
         end
-      | None => None
-      end
-    | _ => None
-    end
-  | Ty_Fun T1 T2 => 
+    | _, _ => None
+    end; *)
+  normalise_check (Ty_Fun T1 T2) => 
     match normalise_check T1, normalise_check T2 with
     | Some T1n, Some T2n => Some (Ty_Fun T1n T2n)
     | _, _ => None
-    end
-  | Ty_Forall bX K T0 =>
+    end; 
+  normalise_check (Ty_Forall bX K T0) =>
     match normalise_check T0 with
     | Some T0n => Some (Ty_Forall bX K T0n)
     | _ => None
-    end
-  | Ty_Lam bX K T0 =>
+    end;
+  normalise_check (Ty_Lam bX K T0) =>
     match normalise_check T0 with
     | Some T0n => Some (Ty_Lam bX K T0n)
     | _ => None
-    end
-  | Ty_Var X => Some (Ty_Var X)
-  | Ty_IFix F T =>
+    end;
+  normalise_check (Ty_Var X) => Some (Ty_Var X);
+  normalise_check (Ty_IFix F T) =>
     match (normalise_check F, normalise_check T) with
     | (Some Fn, Some Tn) => Some (Ty_IFix Fn Tn)
     | (_, _) => None
-    end
-  | Ty_Builtin st => Some (Ty_Builtin st)
-  end.
+    end;
+  normalise_check (Ty_Builtin st) => Some (Ty_Builtin st);
+  normalise_check t => Some t *)
+  (* . *)
+(* Proof. *)
+(* Admitted. *)
+(* Abort. *)
 
-Admit Obligations.
 
-Theorem normalise_checking_sound : forall ty tyn,
+(* Theorem normalise_checking_sound : forall ty tyn,
   normalise_check ty = Some tyn -> normalise ty tyn.
 Proof.
+  intros ty.
+  induction ty; intros tyn H.
 Admitted.
 
 Theorem normalise_checking_complete : forall ty tyn,
   normalise ty tyn -> normalise_check ty = Some tyn.
 Proof.
-Admitted.
+Admitted. *)
 
 (** Properties of type normalisation *)
 Lemma normalise_to_normal : forall T Tn,
