@@ -142,3 +142,10 @@ Proof.
     || replace T' with (rename Y Y' T); eauto; rewrite <- rename_preserves_size; eauto
     ].
 Qed.
+
+(** Multi-substitutions of types*)
+Fixpoint msubstTCA (ss : list (string * ty)) (T : ty) : ty :=
+  match ss with
+  | nil => T
+  | (a, T0) :: ss' => msubstTCA ss' (substituteTCA a T0 T)
+  end.
