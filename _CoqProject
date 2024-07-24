@@ -150,4 +150,3 @@ src/Util/Tactics.v
 src/Util/Map/Mupdate.v
 
 src/PlutusIR/Parser.v
-src/PlutusIR/Cert/Dump1.v

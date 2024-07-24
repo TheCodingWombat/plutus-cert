@@ -1,4 +1,4 @@
-From Equations Require Import Equations.
+(* From Equations Require Import Equations.
 Require Import PlutusCert.PlutusIR.
 Require Import Strings.String.
 Require Export PlutusCert.PlutusIR.Semantics.Static.Kinding.
@@ -378,7 +378,7 @@ Proof.
   intros [t'0 [STM V]].
   exists t'0. split; eauto.
   apply multi_step with (y := t'); assumption. *)
-Qed.
+Admitted.
 
 Lemma multistep_goes_through_step : forall (t t' v : ty),
   value v -> t --> t' -> t -->* v -> t' -->* v.
@@ -931,7 +931,7 @@ Admitted. *)
 Lemma msubstTCA_R : forall c env ty K,
     c |-* ty : K ->
     instantiation c env ->
-    R K (msubstTCA env ty).
+    exists v, msubstTCA env ty -->* v /\ R K? v. (* I think we want to say something like this*)
 Proof.
   intros c env0 ty K HT V.
   generalize dependent env0.
@@ -941,15 +941,33 @@ Proof.
   induction HT; intros.
 
   - (* T_Var *)
-   destruct (instantiation_domains_match V H) as [t P].
+    admit.
+   (* destruct (instantiation_domains_match V H) as [t P].
    eapply instantiation_R; eauto.
-   rewrite msubstTCA_var.  rewrite P. auto. eapply instantiation_env_closed; eauto.
+   rewrite msubstTCA_var.  rewrite P. auto. eapply instantiation_env_closed; eauto. *)
   - shelve.
   - shelve.
   - shelve.
   - shelve.
   - (* T_Abs *)
-    unfold R. fold R.  split; [|split].
+       assert (exists v', value v' /\ R K1 v').
+     {
+      (* I think this v' can be constructed as in normalisation.v*)
+      (* Proving v' is R K2 v' is impossible, because it may have free vars*)
+      admit.
+     }
+     destruct H as [my_v [my_Hvalue my_HR] ].
+     assert ([] |-* my_v : K1) by admit.
+
+     specialize IHHT with (c:= ((X, K1)::Δ)).
+     specialize IHHT with (env0:=((X, my_v)::env0)).
+     assert (exists v, msubstTCA ((X, my_v)::env0) T -->* v /\ R K2 v) by admit.
+     destruct H0 as [the_v [the_vstep the_vR]].
+     exists (Ty_Lam X K1 the_v).
+     rewrite msubstTCA_abs.
+
+
+    unfold R. fold R. exists my_v.  split; [|split].
     + apply msubstTCA_preserves_kinding with (c := Δ ); [assumption|].
       unfold mupdate. 
       rewrite app_nil_r.
@@ -964,14 +982,7 @@ Proof.
      (* We should be able to prove something like a subset of this env0 T halting a la normalisation.v*)
      (* assert (exists v'_RK2, R K2 (msubstTCA ((X, v'_RK2)::env0) T)) by admit. (* By IHHT*)
      *)
-     assert (exists v', msubstTCA (drop X env0) T -->* v' /\ value v').
-     {
-      (* I think this v' can be constructed as in normalisation.v*)
-      (* Proving v' is R K2 v' is impossible, because it may have free vars*)
-      admit.
-     }
      destruct H1 as [v' [H1step H1value]].
-     rewrite msubstTCA_abs.
      
      
      (* Using v' here may solve the problem, but how do we get this v'?*)
@@ -1049,4 +1060,4 @@ Qed.
 
 (* 2024-01-02 21:54 *)
 
-
+ *)

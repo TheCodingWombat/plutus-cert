@@ -278,7 +278,6 @@ Inductive ty :=
   | Ty_App : ty -> ty -> ty
   (* | Ty_SOP : list (list ty) -> ty *)
 .
-
 (*
   Note [Simplification of AST representation]
 

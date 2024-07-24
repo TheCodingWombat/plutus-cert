@@ -6,9 +6,13 @@ Require Export PlutusCert.PlutusIR.Semantics.Static.Kinding.
 Require Export PlutusCert.PlutusIR.Semantics.Static.TypeSubstitution.
 Require Import List.
 Import ListNotations.
+From PlutusCert Require Import Analysis.FreeVars.
+Import Ty.
 Require Import Bool.
 
 Require Import Lia.
+
+Open Scope string_scope.
 
 (* Type equality *)
 Reserved Notation "T1 '=b' T2" (at level 40).
@@ -128,7 +132,7 @@ Inductive normalise : ty -> ty -> Prop :=
       normalise T0 T0n ->
       normalise (Ty_Forall bX K T0) (Ty_Forall bX K T0n)
   | N_TyLam : forall bX K T0 T0n,
-      normalise T0 T0n ->
+      normalise T0 T0n -> (* TODO: Why do we "evaluate" the inside of the lambda? Isn't a lambda "a value"?*)
       normalise (Ty_Lam bX K T0) (Ty_Lam bX K T0n)
   | N_TyVar : forall X,
       normalise (Ty_Var X) (Ty_Var X)
@@ -142,6 +146,8 @@ Inductive normalise : ty -> ty -> Prop :=
 
 #[export] Hint Constructors normalise : core.
 
+(* Module Normalisation.
+
 Definition relation (X : Type) := X -> X -> Prop.
 Inductive multi {X : Type} (R : relation X) : relation X :=
   | multi_refl : forall (x : X), multi R x x
@@ -153,15 +159,389 @@ Inductive multi {X : Type} (R : relation X) : relation X :=
 Notation multistep := (multi normalise).
 Notation "t1 '-->*' t2" := (multistep t1 t2) (at level 40).
 
+(* TODO: I think the stability lemmas below already show this *)
+Lemma normalise_refl : forall ty1,
+  normal_Ty ty1 -> normalise ty1 ty1.
+Proof.
+Admitted.
+
+
 Definition halts (t : ty) : Prop := exists t', and (t -->* t') (normal_Ty t').
+
+Definition env := list (string * ty).
+
+Fixpoint msubst (delta : env) (t : ty) : ty :=
+  match delta with
+  | [] => t
+  | (X, T) :: delta' => msubst delta' (substituteTCA X T t)
+  end.
+
+Definition tass := list (string * kind).
+
+Fixpoint mupdate (new_values : list(string * kind)) (Delta : list (string * kind)) :=
+  match new_values with
+  | [] => Delta
+  | ((X, K) :: xs) => (X, K) :: mupdate xs Delta
+  end.
+
+Lemma mupdate_right_identity : forall (new_values : list(string * kind)),
+  mupdate new_values [] = new_values.
+Proof.
+Admitted.
+
+Lemma Ty_Lam_normalization : forall X K1 delta T t,
+  msubst delta T -->* t ->
+  Ty_Lam X K1 (msubst delta T) -->* Ty_Lam X K1 t.
+Proof.
+  intros X K1 delta T t Hnorm.
+  induction Hnorm.
+  - apply multi_refl. 
+  - apply multi_step with (y := Ty_Lam X K1 y).
+    + apply N_TyLam.
+      assumption.
+    + assumption.
+Qed.
+
+
+Fixpoint SN kind ty : Prop :=
+  and (and ([] |-* ty : kind) (halts ty))
+  match kind with
+  | Kind_Base => True
+  | Kind_Arrow k1 k2 => forall ty', SN k1 ty' -> SN k2 (Ty_App ty ty')
+  end.
+
+Inductive instantiation : tass -> env -> Prop :=
+| V_nil :
+    instantiation nil nil
+| V_cons : forall x kind ty c e,
+    normal_Ty ty -> SN kind ty ->
+    instantiation c e ->
+    instantiation ((x,kind)::c) ((x,ty)::e).
+
+Lemma SN_implies_halts : forall {kind} {ty},
+  SN kind ty -> halts ty.
+Proof.
+  intros kind ty H.
+  destruct kind. (* TODO: Why is this destructuring necessary? *)
+  - destruct H as [[_ Hhalts] _]; assumption.
+  - destruct H as [[_ Hhalts] _]; assumption. 
+Qed.
+
+(* Substituting type variables does not change kind*)
+Lemma msubst_preserves_kinding : forall new_values delta,
+  instantiation new_values delta ->
+  forall Delta ty kind,
+  mupdate new_values Delta |-* ty : kind ->
+  Delta |-* (msubst delta ty) : kind.
+Proof.
+Admitted.
+
+
+
+(* TODO: I don't know if this is true, and everything hinges on this lemma *)
+(* I think it makes sense though.*)
+(* It does not make sense, because x becomes a free variable in T, and SN is only
+   defined for empty contexts *)
+(* But it does make sense if SN subst x ty T implies halts T. *)
+Lemma substituteTCA_SN_preserves_halts : forall K K' x ty T,
+  [] |-* ty : K' -> SN K' ty -> 
+  
+  SN K (substituteTCA x ty T) -> halts T.
+Proof.
+  intros K K' x ty T Hkind HSNK' HSNsubst.
+  induction T.
+  - (* Ty_Var *)
+    funelim (substituteTCA x ty (Ty_Var t)); try discriminate.
+    destruct Heqcall.
+    (* true without assumptions I think ?? *)
+    admit.
+    
+  - shelve.
+  - shelve.
+  - shelve.
+  - shelve.
+  - (* Ty_Lam *)
+    (* We know K is of the form _ -> _ *)
+   (* Ty_App *)
+Admitted.
+  
+Corollary msubst_SN_preserves_halts : forall K x ty T delta,
+  SN K (msubst ((x, ty)::delta) T) -> halts T.
+Proof.
+Admitted.
+
+
+
+
+(* no free vars in closed terms*)
+Definition closed (t:ty) :=
+  forall x, not (In x (Ty.ftv t)).
+
+Fixpoint closed_env (env:env) :=
+  match env with
+  | nil => True
+  | (x,t)::env' => closed t /\ closed_env env'
+  end.
+
+(* Properties of Instantiations *)
+Lemma instantiation_domains_match: forall {c} {e},
+    instantiation c e ->
+    forall {x} {K},
+      List.lookup x c = Some K -> exists ty, List.lookup x e = Some ty.
+Proof.
+Admitted.
+
+(* By the definition of instantiation, all (ty, kind) pairs in instantiation are strongly normalizing *)
+Lemma instantiation_SN : forall c e,
+    instantiation c e ->
+    forall x T K,
+      List.lookup x c = Some K ->
+      List.lookup x e = Some T -> SN K T.
+Proof.
+Admitted.
+
+Lemma instantiation_env_closed : forall c e,
+  instantiation c e -> closed_env e.
+Proof.
+Admitted.
+
+
+(* Properties of multi-substitutions *)
+
+Lemma msubst_var: forall ss x, 
+  closed_env ss -> msubst ss (Ty_Var x) =
+  match List.lookup x ss with
+  | Some t => t
+  | None => Ty_Var x
+end.
+Proof.
+  (* TODO: See why the closed_env requirement is there*)
+Admitted.
+
+(* TODO: Is that true with fresh stuff and all? *)
+(* I would say it is true "enough"*)
+Lemma msubst_lam : forall delta X K1 T,
+  msubst delta (Ty_Lam X K1 T) = Ty_Lam X K1 (msubst delta T).
+Proof.
+Admitted.
+
+
+
+Lemma normalise_preserves_SN : forall K ty ty', 
+(normalise ty ty') -> SN K ty' -> SN K ty.
+Proof.
+Admitted.
+Lemma multistep_preserves_SN : forall K ty ty', 
+ty -->* ty' -> SN K ty' -> SN K ty.
+Proof.
+Admitted.
+Lemma multistep_preserves_SN' : forall K ty ty',
+ty -->* ty' -> SN K ty -> SN K ty'.
+Proof.
+Admitted.
+
+
+
+Lemma construct_ty_SN : forall K,
+  exists v, and (normal_Ty v ) (SN K v).
+Proof.
+  intros K.
+  induction K.
+  - exists (Ty_Builtin (Some' (TypeIn DefaultUniInteger))).
+    split.
+    + apply NO_TyBuiltin.
+    + unfold SN.
+      split; [split|].
+      * apply K_Builtin.
+        apply K_DefaultUniInteger.
+      * unfold halts.
+        exists (Ty_Builtin (Some' (TypeIn DefaultUniInteger))).
+        split. 
+        -- apply multi_refl.
+        -- apply NO_TyBuiltin.
+      * reflexivity.
+  - destruct IHK1 as [ty1 H1].
+    destruct IHK2 as [ty2 H2].
+    exists (Ty_Lam "x" K1 ty2). (* MEETING: Maybe we need to make "x" so that x not in anything, i.e. fresh. NOt possible I think, needs to work for arbitrary ty2?*)
+    split.
+    + apply NO_TyLam.
+      destruct H2.
+      assumption.
+    + unfold SN; split; [split|fold SN]. (* TODO ask, shouldn't we get an induction hypothesis here?*)
+      * apply K_Lam.
+        destruct H2.
+        induction K2; unfold SN; destruct H0 as [[H0 _] _ ]; admit. (* and then weakening, done*)
+        
+      * unfold halts.
+        exists (Ty_Lam "x" K1 ty2).
+        split.
+        apply multi_refl.
+        apply NO_TyLam. destruct H2 as [H2 _].
+        assumption.
+        
+      *
+        intros ty' Hty'.
+        
+        
+        destruct H2 as [H2norm H2SN].
+        admit.
+        (* Big question: Do we have SN K2 ty2 /\ SN K1 ty' => SN K2 ("x" -> ty') ty2*)
+          (* Maybe we can conclude from SN K2 ty2, that "x" is not free in ty2??, yes we can!*)
+          (* Then ("x" -> ty') ty2 = ty2, and it holds!*)
+          (* Use typable_empty, closed definition, and substituteTCA definition (("x" -> ty') ty2 = ty2 may only hold up to renaming!)*)
+          (* NOTE: This does not hold anymore if we change the logical relation to be more generic and have open kinding relations*)
+          (* Renaming remark should be good, because "if existsb (eqb Y) (ftv U)", with U=ty' is always false*)
+          (* Because ftv U = [], since [] |-* ty' : K1 by SN K1 ty'*)
+
+Admitted.
+
+Lemma well_kinded_subst_implies_SN : forall c ty kind delta,
+  c |-* ty : kind -> 
+  instantiation c delta ->
+  SN kind (msubst delta ty).
+Proof.
+  intros c ty kind delta Hwk V. 
+  generalize dependent delta. (* Not needed for TyVar, maybe for the others?  *)
+  induction Hwk; intros.
+  - destruct (instantiation_domains_match V H) as [t P].
+    assert (V' := V).
+    apply instantiation_SN with (x := X) (T := t) (K := K) in V; auto.
+    rewrite msubst_var; admit.
+    (* + rewrite P. assumption.
+    + apply instantiation_env_closed with (c := Δ) (e := delta).
+      assumption. *)
+    
+     
+  - shelve.
+  - shelve.
+  - shelve.
+  - shelve.
+  - (* NOTE: Why don´t we have ((X, K1) :: Delta) |-* T : K2 AND 
+        instantiation ((X, K1) :: Delta) delta -> SN K2 (msubst delta T)   
+        INSTEAD OF  what we have now, where ((X, K1) :: Delta) |-* T : K2   
+        is already known and not a precondition anymore???*)
+    unfold SN. fold SN.
+    
+    
+    
+    split; [split|].
+    
+    + apply msubst_preserves_kinding with (new_values := Δ); [assumption|].
+      rewrite mupdate_right_identity.
+      apply K_Lam.
+      assumption.
+    + rewrite msubst_lam.
+      apply K_Lam in Hwk. (* Idea is that msubst only substitutes SN terms (by V : instantiation Δ delta) I think, which halt, so the whole should halt*)
+      pose proof (construct_ty_SN K1) as Existence_ty.
+      destruct Existence_ty as [my_ty [Hnormal HSN]].
+      assert (instantiation ((X, K1) :: Δ) ((X, my_ty) :: delta)) as V'.
+      {
+        apply V_cons; assumption. (* by construction *)
+      }
+      apply (IHHwk ((X, my_ty) :: delta)) in V'.
+      simpl in V'.
+      apply SN_implies_halts in V'.
+      assert (halts (msubst delta T)) by admit. (* This should be true. Leaving out a substitution should not make normalizing 'harder'*)
+
+      
+       
+      (* apply SN_implies_halts in V'. *)
+
+      (* halts T -> halts Ty_Lam _ _ T*)
+      unfold halts.
+      unfold halts in H.
+      destruct H as [t* [Hnorm HnormalTy]].
+      exists (Ty_Lam X K1 t).
+      split.
+      * apply Ty_Lam_normalization.
+        assumption. 
+      * apply NO_TyLam.
+        assumption.
+    + 
+      (* Above I showed (msubst delta (Ty_Lam X K1 T) -->* v=(Ty_Lam X K1 v'))*)
+      (* ANd with new existential SN definition, we then need to show
+         SN K2 ((\X:K1 . v') ty') 
+         Which should be the same as proving
+         SN K2 [X -> ty']v'.
+         This looks kind of like SN K2 (msubst (X, ?)::delta  T).
+         In the halts case we constructed a ty like that, but now we actually need to have
+         that it holds for all ty? So SN K2 (msubst (X, ty')::delta)
+         But we have the additional condition SN K1 ty'.
+          Is that enough to show that value ty' /\ SN K1 ty', by the instantiation definition?
+          SN K1 ty' is direct from the condition. But value ty'?
+          No, value ty' is not always true. Why do we need this condition?
+          We needed it because we ended up in a form SN K2 [X -> ty']v' and we wanted to be able to
+          say something about that from IHHwk's result: SN K2 [X |-> ?] T
+            SO solution: First evalute ty' to a value v_ty'.
+              ( this was already necessary to do the beta reduction step according to our operational semantics)
+          -----
+          So starting over (ignoring other substitutions in original Delta/delta): 
+          We need to show forall ty'
+            SN K2 [X -> v_ty']v', where ty' -->* v_ty' /\ value v_ty' (which exists by SN K1 ty').
+              which we can show using IHHwk, by setting delta = (X, v_ty')::delta, so then
+              we need to show:
+            instant ((X, K1)::Delta) ((X, v_ty')::delta), 
+              which by instantiation Delta delta means showing  
+            value v_ty' /\ SN K1 v_ty',
+              of which the first is true by construction, so
+            SN K1 v_ty' =>
+              YES, BY MULTISTEP_PRESERVES_R'!!!!!!!!
+
+          Let's step back again:
+          By IHHwk with v_ty', we know:
+            SN K2 (msubst (X, v_ty')::delta T).
+            =???
+            SN K2 (msubst (X, v_ty')::(delta-X) T).  (* Ok, back up: I always thought that by adding something onto the substitution list, the previous value would be ignored, but that is not the case actually...*)
+                                                    (* Anyways, this should hold, so maybe we have to change the context update definition*)
+            
+
+          We need to show that the above results in this below:
+            SN K2 (Ty_Lam X K1 v') ty'
+            -->*
+            SN K2 (Ty_Lam X K1 v') v_ty'.
+            -->*
+            SN K2 (msubst (X, v_ty')::[] v')   (and msubst (delta-X) T -->* v', so it should be true???).4
+
+            which we can show by showing that
+            there exists v'' such that (msubst (X, v_ty')::(delta - X) T) -->* v''
+            and msubst (X, v_ty')::[] v' -->* v''.
+
+          That doesnt immediately follow.
+          From (msubst delta (Ty_Lam X K1 T) -->* v=(Ty_Lam X K1 v'))
+          we can also do it differently:
+          msubst delta (Ty_Lam X K1 T) = Ty_Lam X K1 (msubst delta-X T)
+            which goes to v if
+            msubst delta-X T -->* v'
+
+
+         *)
+        admit.
+  - shelve.
+Admitted.
+
+Corollary well_kinded_implies_SN : forall ty kind,
+  [] |-* ty : kind -> SN kind ty.
+Proof.
+  (* intros ty kind H.
+  apply well_kinded_subst_implies_SN with (Delta := []) (delta := []) in H.
+  - simpl in H. 
+    assumption. 
+  - apply V_nil. 
+Qed. *)
+Admitted.
 
 (* Main theorem that shows that normalization terminates for well kinded terms*)
 Theorem strong_normalization : forall T K,
   [] |-* T : K -> halts T.
 Proof.
+  (* intros T K H.
+  apply SN_implies_halts with (kind := K).
+  apply well_kinded_implies_SN.
+  assumption.
+Qed. *)
 Admitted.
 
-
+End Normalisation.
 (* TODO: Use function with measure?
 Equations? normalise_check_easy (ty : PlutusIR.ty) : (option PlutusIR.ty) by wf (size ty):=
     (* Simplified version of Ty_App that is enough for the difficult termination proof *)
@@ -230,6 +610,8 @@ Theorem normalise_checking_complete : forall ty tyn,
   normalise ty tyn -> normalise_check ty = Some tyn.
 Proof.
 Admitted. *)
+ *)
+
 
 (** Properties of type normalisation *)
 Lemma normalise_to_normal : forall T Tn,
@@ -420,3 +802,4 @@ Axiom norm_normalise : forall ty, normalise ty (norm ty).
 
 Axiom map_norm : list (string * ty) -> list (string * ty).
 Axiom map_norm_map_normalise : forall Ts, map_normalise Ts (map_norm Ts).
+

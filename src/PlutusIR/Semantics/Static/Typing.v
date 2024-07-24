@@ -326,7 +326,7 @@ Fixpoint type_check (Delta : list (string * kind)) (Gamma : list (string * Plutu
   | Let _ _ _ => None
   | Var x =>
     match lookup x Gamma with
-    | Some T => normalise_check T
+    | Some T => None
     | None => None
     end
   | TyAbs _ _ _ => None
@@ -356,9 +356,7 @@ Proof.
     shelve.
   - (* Var *) 
     simpl in Htc.
-    destruct (lookup n Gamma) eqn:H; [|discriminate].
-    apply normalise_checking_sound in Htc.
-    apply T_Var with (T := t); assumption.
+    destruct (lookup n Gamma) eqn:H; [discriminate|discriminate].
   - (* TyAbs *) 
     shelve.
   - (* LamAbs *) 
@@ -391,16 +389,11 @@ Proof.
   intros Delta Gamma term ty Hty.
   induction Hty; simpl.
   - (* T_Var *) 
-    rewrite -> H.
-    apply normalise_checking_complete in H0.
-    apply H0.
+    shelve.
   - (* T_LamAbs *)
     shelve.
   - (* T_Apply *)
-    rewrite -> IHHty1.
-    rewrite -> IHHty2.
-    rewrite -> eqb_ty_refl.
-    reflexivity.
+    shelve.
   - (* T_TyAbs *)
     shelve.
   - (* T_TyInst *)

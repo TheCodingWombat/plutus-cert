@@ -59,7 +59,7 @@ Inductive has_kind_uni : DefaultUni -> kind -> Prop :=
       |-*_uni DefaultUniBLS12_381_G2_Element : Kind_Base
   | K_DefaultUniBLS12_381_MlResult :
       |-*_uni DefaultUniBLS12_381_MlResult : Kind_Base
-  | K_DefaultUniApply : forall k k' t t',
+  | K_DefaultUniApply k k' t t':
       |-*_uni t : (Kind_Arrow k k') ->
       |-*_uni t' : k ->
       |-*_uni (DefaultUniApply t t') : k'
@@ -126,22 +126,11 @@ Lemma kind_checking_default_uni_complete : forall d k,
     |-*_uni d : k -> kind_check_default_uni d = Some k.
 Proof.
   intros d k H.
-  induction H; simpl.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
-  - reflexivity.
+  induction H; simpl; try reflexivity.
   - rewrite -> IHhas_kind_uni1.
     rewrite -> IHhas_kind_uni2.
     rewrite eqb_kind_refl.
     reflexivity.
-  - reflexivity.
-  - reflexivity.
 Qed.
       
 
