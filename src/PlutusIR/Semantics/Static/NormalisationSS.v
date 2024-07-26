@@ -63,9 +63,9 @@ Inductive value : ty -> Prop :=
       value (Ty_Builtin st)
       
   with neutral : ty -> Prop :=
-  | v_var : forall x,
+  | ne_var : forall x,
       neutral (Ty_Var x) (* TODO, notation for tyvars?*)
-  | v_app : forall ty1 ty2,
+  | ne_app : forall ty1 ty2,
       neutral ty1 ->
       value ty2 ->
       neutral (Ty_App ty1 ty2).
@@ -82,16 +82,16 @@ Inductive step : ty -> ty -> Prop :=
       ty1 --> ty1' ->
       <{(\x:K2, ty1)}> --> <{(\x:K2, ty1')}>
   | ST_AppAbs : forall x K2 v1 v2,
-         value v2 ->
-         value (Ty_Lam x K2 v1) -> (*Toegevoegd: Needed for determinism *)
+         (* value v2 -> *)
+         (* value (Ty_Lam x K2 v1) -> Toegevoegd: Needed for determinism *)
          <{(\x:K2, v1) v2}> --> <{ [x:=v2]v1 }>
   | ST_App1 : forall ty1 ty1' ty2,
          ty1 --> ty1' ->
          <{ty1 ty2}> --> <{ty1' ty2}>
-  | ST_App2 : forall v1 ty2 ty2',
-         value v1 ->
+  | ST_App2 : forall ty1 ty2 ty2',
+         (* value v1 -> *)
          ty2 --> ty2' ->
-         <{v1 ty2}> --> <{v1  ty2'}>
+         <{ty1 ty2}> --> <{ty1 ty2'}>
 
 where "ty '-->' ty'" := (step ty ty').
 
@@ -143,6 +143,23 @@ Proof with eauto.
   inversion Hstep.  *)
 Admitted.
 
+(* Shouldnt be for all K, only for the K matching T*)
+Lemma confluence_helper : forall y t1 t1' t2,
+  t1 --> t1' -> substituteTCA y t2 t1 -->* substituteTCA y t2 t1'.
+Proof.
+  intros y t1 t1' t2 IHt1step.
+  induction IHt1step.
+  - admit. (* lam reduction, should be doable, casing on X=?x*)
+  - admit. (* Uhm, I don't know how renaming works *) 
+  - admit. (* Should be easy by applying subst on TyApp*)
+  - admit. (* Same *)
+Admitted.
+
+Theorem confluence : forall x y y' z : ty,
+  x --> y -> x --> y' -> exists z, y -->* z /\ y' --> z.
+Proof.
+Admitted.
+
 (* ----------------------------------------------------------------- *)
 (** *** Preservation *)
 
@@ -171,7 +188,7 @@ induction HT; intros t' HE; subst; inversion HE; subst...
 - apply K_App with (K1 := K1); [assumption|].
   apply IHHT2.
   assumption.     *)
-Admitted.
+Admitted. (* Works, only admitted to speed up Coq*)
 
 (* ----------------------------------------------------------------- *)
 (** *** Context Invariance *)
@@ -285,7 +302,7 @@ Ltac solve_by_value_nf :=
 
 Definition deterministic {X : Type} (R : relation X) :=
   forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
-
+(* 
 Lemma step_deterministic :
    deterministic step.
 Proof with eauto.
@@ -295,7 +312,7 @@ Proof with eauto.
    (* induction E1; intros t'' E2; inversion E2; subst; clear E2. *)
    induction E1; intros t'' E2; inversion E2; subst; clear E2;
    try solve_by_invert; try f_equal; try solve_by_value_nf; eauto.   
-Qed.
+Qed. *)
 
 
 Definition halts  (t:ty) : Prop :=  exists t', t -->* t' /\  value t'.
@@ -328,20 +345,20 @@ Proof.
   unfold halts; exists v; assumption. *)
 Admitted.
 
+Lemma R_types : forall K T,
+  R K T -> [] |-* T : K.
+Proof.
+Admitted.
+
 Lemma R_typable_empty : forall {T} {t}, R T t -> [] |-* t : T.
 Proof.
   intros.
   destruct T; unfold R in H; destruct H as [v [H _]]; assumption.
 Qed.
 
-(* Shouldnt be for all K, only for the K matching T*)
-Theorem R_preserves_value_substTCA : forall K X U T T',
-  R K T -> value U -> T -->* T' -> 
-    exists v', substituteTCA X U T -->* v' /\ substituteTCA X U T' -->* v'.
+Corollary R_ty_closed : forall K T,
+  R K T -> closed T.
 Proof.
-  intros K X v' T T' HR Hv Hstep.
-  funelim (substituteTCA X v' T); try inversion Hstep; try discriminate.
-
 Admitted.
 
 (** Now we proceed to show the main result, which is that every
@@ -367,7 +384,7 @@ Admitted.
 Lemma step_preserves_halting :
   forall t t', (t --> t') -> (halts t <-> halts t').
 Proof.
- (* intros t t' ST.  unfold halts.
+ intros t t' ST.  unfold halts.
  split.
  - (* -> *)
   intros [t'' [STM V]].
@@ -377,28 +394,7 @@ Proof.
  - (* <- *)
   intros [t'0 [STM V]].
   exists t'0. split; eauto.
-  apply multi_step with (y := t'); assumption. *)
-Qed.
-
-Lemma multistep_goes_through_step : forall (t t' v : ty),
-  value v -> t --> t' -> t -->* v -> t' -->* v.
-Proof.
-  (* intros Hvalue t t' v Hstep Hmulti.
-  induction Hmulti.
-    + exfalso.
-      apply (value__normal) in v.
-      unfold step_normal_form in v.
-      unfold not in v.
-      apply v.
-      exists t.
-      assumption.
-    + assert (t = y). 
-      {
-       rewrite (step_deterministic x t y); try assumption.
-       reflexivity. 
-      }
-      subst...
-      assumption. *)
+  apply multi_step with (y := t'); assumption.
 Admitted.
 
 (** Now the main lemma, which comes in two parts, one for each
@@ -541,6 +537,14 @@ Inductive instantiation :  kass -> env -> Prop :=
 
 (** First we need some additional lemmas on (ordinary) substitution. *)
 
+(** Closed environments are those that contain only closed terms. *)
+
+Fixpoint closed_env (env:env) :=
+  match env with
+  | nil => True
+  | (x,t)::env' => closed t /\ closed_env env'
+  end.
+
 Lemma vacuous_substitution : forall  t x,
      ~ appears_free_in x t  ->
      forall t', <{ [x:=t']t }> = t.
@@ -605,6 +609,11 @@ Lemma duplicate_subst : forall t' x t v,
 Proof.
   intros. eapply vacuous_substitution. apply subst_not_afi. assumption.
 Qed.
+
+Lemma drop_duplicate_msubst : forall X T v env,
+  closed v -> closed_env env -> msubstTCA ((X, v)::env) T = msubstTCA ((X, v)::(drop X env)) T.
+Proof.
+Admitted.
 
 Lemma subst_tyvar_identity : forall x v t,
   x <> t -> <{[x := v] {t}}> = <{{t}}>.
@@ -672,14 +681,6 @@ Proof.
     destruct a. simpl. rewrite subst_closed; assumption.
 Qed.
 
-(** Closed environments are those that contain only closed terms. *)
-
-Fixpoint closed_env (env:env) :=
-  match env with
-  | nil => True
-  | (x,t)::env' => closed t /\ closed_env env'
-  end.
-
 (** Next come a series of lemmas charcterizing how [msubst] of closed terms
     distributes over [subst] and over each term form *)
 
@@ -716,13 +717,6 @@ Proof.
 Admitted.
 
 
-(* This is not true because of renaming, but I think I can still kind of use it
-Lemma substTCA_abs: forall X1 K1 X2 K2 T,
-  substituteTCA X1 K1 (Ty_Lam X2 K2 T) =
-    if X1 =? X2 then Ty_Lam X2 K2 T else Ty_Lam X2 K2 (substituteTCA X1 K1 T).
-Proof.
-Admitted. *)
-
 (* TODO: This is not true because of renaming, but I don't think it will change the proofs using it*)
 (* Should not be influenced by changing lambda body normalisation*)
 Lemma msubstTCA_abs: forall ss x T t,
@@ -733,17 +727,6 @@ Proof.
     destruct a.
       simpl. destruct (String.eqb s x); simpl; auto.
 Admitted.
-
-(* (* TODO: I also don't think this one holds. 
-  BUt now I do, because msubstTCA is defined as first 
-  substituting the X for the v *)
-  (* I think it holds by the fact that a lambda, after substitution, is still a lambda, and thus a value*)
-  (* So it might be problematic if we start normalising the bodies? But not really, 
-  because we will assume the bodies ar enormalising? *)
-Lemma msubstTCA_beta: forall ss X K ty v,
-  Ty_App (msubstTCA ss (Ty_Lam X K ty)) v -->* msubstTCA ((X, v)::ss) ty.
-Proof.
-Admitted. *)
 
 
 Lemma msubstTCA_app : forall ss t1 t2,
@@ -839,26 +822,23 @@ Qed.
 (** We'll need just a few of these; add them as the demand arises. *)
 
 Lemma multistep_App2 : forall v t t',
-  value v -> (t -->* t') -> <{ v t }> -->* <{ v t' }>.
+  (t -->* t') -> <{ v t }> -->* <{ v t' }>.
 Proof.
-  intros v t t' V STM. induction STM.
+  intros t t' V STM. induction STM.
    apply multi_refl.
    eapply multi_step.
      apply ST_App2; eauto.  auto.
 Qed.
 
+Lemma multistep_AppAbs : forall X K T v,
+  Ty_App (Ty_Lam X K T) v -->* substituteTCA X v T.
+Proof.
+Admitted.
+
 Lemma multistep_Abs : forall t t' X K,
   t -->* t' -> Ty_Lam X K t -->* Ty_Lam X K t'.
-
-(* Lemma multistep_App2' : forall t s s',
-  (s -->* s') -> <{t s}> -->* <{t s'}>.
 Proof.
-  intros t s s' STM. induction STM.
-  - apply multi_refl.
-  - eapply multi_step.
-    + apply ST_App2; eauto.
-    
-Qed. *)
+Admitted.
 
 (* FILL IN HERE *)
 
@@ -885,46 +865,127 @@ Proof.
     assumption.
 Qed.
 
-
-(* TODO: Should be true (but is it in small step??? ) *)
-(* We could add hypothesis value v, but I don't know if we need it*)
-(* Lemma step_substitution : forall X s v T,
-  s -->* v -> substituteTCA X s T -->* substituteTCA X v T.
+(* Important lemma that seems very hard to prove*)
+(* Maybe this isnt even true. But we have more assumptions *)
+(*  We have R K (substituteTCA X v T) and need to prove 
+      halts T*)
+Lemma halts_preserves_substituteTCA : forall X T' T,
+  halts (substituteTCA X T' T) -> halts T.
 Proof.
-  intros X s v T hstep.
-  induction T.
-  - funelim (substituteTCA X s (Ty_Var t)); try discriminate.
-    inversion H.
-    destruct (eqb_spec X Y).
-    + rewrite <- Heqcall.
-      subst.
-      rewrite subst_tyvar_value.
-      assumption.
-    + subst.
-      rewrite subst_tyvar_identity; [|assumption].
-      rewrite subst_tyvar_identity; [|assumption].
-      apply multi_refl.
-  - shelve.
-  - shelve.
-  - shelve.
-  - shelve.
-  - rewrite substTCA_abs.
-    rewrite substTCA_abs.
-    destruct (eqb_spec X b).
+  intros X T' T H.
+  induction T; simpl in H; try (inversion H; subst; constructor; assumption).
+  - unfold halts.
+    exists (Ty_Var t).
+    split.
     + apply multi_refl.
-    +  
+    + apply v_neutral.
+      apply ne_var. 
+  - shelve.
+  - shelve.
+  - shelve.
+  - shelve.
+  - admit. 
+    (* Proof strategy:
+        - pull substitution into lambda.
+        - \b : K, [X:=T'] T -->* v /\ value v   ->  [X:=T'] T -->*  v' /\ value v'.
+        - Then use IHT to show halts T.
+        - Then use v_abs to show that if T -->*  v'' with value v'', then \b : K, T -->*  \b : K, v'', which is also a value
+        *) 
+  - admit. (* 
+    VERY PROBLEMATIC
+  
+  From halts [X:=T') (T1 T2), we do not necessarily have halts [X := T') T1 for example, so cannot use IH.
+       Even if we had that, rebuilding this to halts T1 T2 is problematic, we need strong normalization for that*) admit.
 
+  (*
 
+    Maybe this is a good proof approach:
+
+      By confluence, no matter what steps we take, we always have that we can rejoin.
+
+      Notation: values are v
+
+      So suppose T1 T2 -->* v
+      Now just step T1. Either it steps to T1', or it steps to v1. Just continue until it is a value.
+      Now do the same for T2 to v2. So we do have that T1 and T2 are both halting.
+      By confluence, we must have that v1 v2 -->* v.
+      
+      But the chains to v1 and v2 could be infinite in length!
+      And are infinite chains a problem for Strong normalization? Yes.
+
+    So: Can we show these chains are not infinite from our semantics?
+
+    Or:
+    Also changing the logical relation to include all reduction sequences will make the proof 
+    about strong normalization again. Maybe that is enough to show 
+    lemma `halts_preserves_substituteTCA`, since then we have stronger assumptions.
+    Of course this changes a lot in the proof, we cannot show exists t s.t. halts blabla, 
+    we need to show for all t' s.t. t --> t', halts t'.
+
+  
+  *)
 Admitted.
 
-Lemma multistep_substitution : forall X s v T env,
-  s -->* v -> msubstTCA ((X, s)::env) T -->* msubstTCA ((X, v)::env) T.
+(* Maybe this isnt even true. But we have more assumptions *)
+(*  We have R K (msubst ((X, v):env)) T) and need to prove 
+      halts (msubstTCA env T*)
+Corollary halts_preserves_weaken_msubstTCA : forall X v env T,
+  halts (msubstTCA ((X, v)::env) T) -> halts (msubstTCA env T).
 Proof.
-  intros X s v T env0 Hstep.
-  induction T.
-Admitted. *)
+Admitted.
 
+Lemma existsence_ty_R : forall K,
+  exists v, value v /\ R K v.
+Proof.
+  intros K.
+  induction K.
+  - exists (Ty_Builtin (Some' (TypeIn DefaultUniInteger))).
+    split.
+    + apply v_builtin.
+    + unfold R.
+      split; [|split].
+      * apply K_Builtin.
+        apply K_DefaultUniInteger.
+      * unfold halts.
+        exists (Ty_Builtin (Some' (TypeIn DefaultUniInteger))).
+        split. 
+        -- apply multi_refl.
+        -- apply v_builtin.
+      * reflexivity.
+  - destruct IHK1 as [ty1 H1].
+    destruct IHK2 as [ty2 H2].
+    exists (Ty_Lam "x" K1 ty2). (* MEETING: Maybe we need to make "x" so that x not in anything, i.e. fresh. NOt possible I think, needs to work for arbitrary ty2?*)
+    split.
+    + apply v_abs.
+      destruct H2.
+      assumption.
+    + unfold R; fold R; split; [|split]. (* TODO ask, shouldn't we get an induction hypothesis here?*)
+      * apply K_Lam.
+        destruct H2.
+        destruct H1 as [_ H1].
+        induction K2; unfold R in H0; destruct H0 as [H0 _]; 
+          apply Kinding.weakening_empty; assumption.
+      * unfold halts.
+        exists (Ty_Lam "x" K1 ty2).
+        split.
+        apply multi_refl.
+        apply v_abs. destruct H2 as [H2 _].
+        assumption.
+      * intros ty' Hty'.
+        destruct H2 as [H2norm H2R].
+        remember H2R as H2R'; clear HeqH2R'.
+        apply R_ty_closed in H2R.
+        apply step_preserves_R' with (t' := substituteTCA "x" ty' ty2).
+        -- apply R_types in Hty'.
+           apply R_types in H2R'.
+           apply K_App with (K1 := K1); [|assumption].
+           apply K_Lam.
+           apply Kinding.weakening_empty.
+           assumption.
 
+        -- apply ST_AppAbs.
+        -- rewrite subst_closed; assumption.
+Qed.
 
 (** And at long last, the main lemma. *)
 
@@ -935,7 +996,6 @@ Lemma msubstTCA_R : forall c env ty K,
 Proof.
   intros c env0 ty K HT V.
   generalize dependent env0.
-  (* We need to generalize the hypothesis a bit before setting up the induction. *)
   remember c as Delta.
   generalize dependent c.
   induction HT; intros.
@@ -955,29 +1015,49 @@ Proof.
       rewrite app_nil_r.
       apply K_Lam.
       assumption.
-    + rewrite msubstTCA_abs. (* TODO: probably we don't even need something that strong?*)
-      admit. (* NOTE: this will change when we normalise under the lambda*)
-    + 
+    + rewrite msubstTCA_abs. 
+      
+      assert (Henv0 : exists v, instantiation ((X, K1) :: Δ) ((X, v) :: env0)).
+      {
+        pose proof (existsence_ty_R K1) as existsv.
+        destruct existsv as [v [valueV Rv]].
+        exists v.
+        apply V_cons; assumption.
+      }
+      destruct Henv0 as [v Henv0].
+      remember Henv0 as Henv0'; clear HeqHenv0'.
+      specialize (IHHT ((X, K1)::Δ)).
+      apply IHHT in Henv0; [|reflexivity].
+      apply R_halts in Henv0.
+      assert (halts (msubstTCA (drop X env0) T)).
+      {
+        rewrite drop_duplicate_msubst in Henv0.
+        - apply halts_preserves_weaken_msubstTCA in Henv0.
+          assumption.
+        - apply instantiation_R with (x := X) (t := v) (T := K1) in Henv0'.
+          + induction K1; unfold R; fold R; destruct Henv0' as [Henv0' _].
+            * apply typable_empty__closed with (T := Kind_Base). assumption.
+            * apply typable_empty__closed with (T := Kind_Arrow K1_1 K1_2). assumption.
+          + simpl. rewrite eqb_refl. reflexivity.
+          + simpl. rewrite eqb_refl. reflexivity.
+        - apply instantiation_env_closed in V.
+          assumption.  
+           
+      }
+      unfold halts.
+      destruct H.
+      exists (Ty_Lam X K1 x).
+      split; destruct H as [Hstep Hvalue].
+      * apply multistep_Abs. assumption. 
+      * apply v_abs.
+        assumption.
+
+    + (* This case makes no weird assumptions anymore, but it only works because of losing determinism*)
      intros.
      destruct (R_halts H) as [v [P Q]].
      pose proof (multistep_preserves_R _ _ _ P H).
-     (* We should be able to prove something like a subset of this env0 T halting a la normalisation.v*)
-     (* assert (exists v'_RK2, R K2 (msubstTCA ((X, v'_RK2)::env0) T)) by admit. (* By IHHT*)
-     *)
-     assert (exists v', msubstTCA (drop X env0) T -->* v' /\ value v').
-     {
-      (* I think this v' can be constructed as in normalisation.v*)
-      (* Proving v' is R K2 v' is impossible, because it may have free vars*)
-      admit.
-     }
-     destruct H1 as [v' [H1step H1value]].
-     rewrite msubstTCA_abs.
-     
-     
-     (* Using v' here may solve the problem, but how do we get this v'?*)
-     apply multistep_preserves_R' with (t' := substituteTCA X v v').
-     
-     (* apply multistep_preserves_R' with (t' := msubstTCA ((X, v)::env0) T). *)
+
+     apply multistep_preserves_R' with (t' := (msubstTCA (env0) (substituteTCA X v T))).     
      * 
        apply K_App with (K1 := K1).
        -- apply msubstTCA_preserves_kinding with (c := Δ).
@@ -989,42 +1069,34 @@ Proof.
      * 
        simpl.
        rewrite msubstTCA_abs.
-       admit. (* SHould now be doable!*)
-       (* apply multi_trans with (y := (Ty_App (Ty_Lam X K1 v') s)).
-       -- assert ((Ty_Lam X K1 (msubstTCA (drop X env0) T)) -->* Ty_Lam X K1 v').
+       (* TODO: we are fighting coq here, we should find out how to do this without all the asserts*)
+       apply multi_trans with (y := (Ty_App (Ty_Lam X K1 (msubstTCA (drop X env0) T)) v)).
        {
-
-        admit.
+        apply multistep_App2.
+        assumption.
 
        }
-       (* Hier 'ontstaat' het probleem al, dat we iets aan de rechterkant van de
-           -->* hebben van de vorm [X := v] T, met T niet een value,
-            daar is niet heen te steppen*) *)
-
-     * (* We only moved the problem? From IHHT we can get
-          R K2 [X := v] T', with T' = msubstTCA (drop X env0) T*) 
-          apply step_preserves_R with (t := Ty_App (Ty_Lam X K1 v') v).
-       apply ST_AppAbs; eauto.
-       apply multistep_preserves_R with (t := Ty_App (Ty_Lam X K1 (msubstTCA (drop X env0) T)) v).
-       admit.
-
-
-      (* Below works without using v' construction, goal is then:
-          R K2 (msubstTCA ((X, v) :: env0) T )*)
-(*      
-      apply multistep_preserves_R' with (t' := msubstTCA ((X, v) :: env0) T).
-         
-       -- 
-          apply msubstTCA_preserves_kinding with (c := ((X,K1)::Δ)).
-          ++ apply V_cons; assumption.
-             ++ unfold mupdate. rewrite app_nil_r. assumption.
-
-          
-      
-       -- simpl. apply multi_refl.
-        
-       -- apply IHHT with (c:= ((X, K1)::Δ)); [reflexivity|].
-          apply V_cons; assumption. *)
+       apply multi_trans with (y:= substituteTCA X v (msubstTCA (drop X env0) T)).
+       {
+        apply multistep_AppAbs.
+       }
+       rewrite subst_msubstTCA.
+       -- apply multi_refl.
+       -- induction K1; unfold R; fold R; destruct H0 as [H0 _]; 
+          apply typable_empty__closed in H0; assumption.
+       -- apply instantiation_env_closed in V; assumption.    
+     * assert (msubstTCA env0 (substituteTCA X v T) = msubstTCA ((X, v)::env0) T).
+      {
+        simpl.
+        reflexivity.
+      }
+      rewrite H1.
+      assert (instantiation ((X, K1)::Δ) ((X, v)::env0)).
+      { apply V_cons; assumption. }
+      specialize (IHHT ((X, K1) :: Δ)).
+      apply IHHT in H2.
+      assumption.
+      reflexivity.
        
   - (* T_App *)
     rewrite msubstTCA_app.
