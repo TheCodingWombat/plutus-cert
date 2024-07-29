@@ -73,7 +73,7 @@ refine(
     match t_var with
       | Var v =>
         match lookup string_dec v env with
-          | Just (existT _ t _) => is_inline n t t' env
+          | Some (existT _ t _) => is_inline n t t' env
           | Nothing => false
         end
       | _     => false

@@ -69,7 +69,7 @@ Proof. eq_principle. Qed.
 Definition C_Apply' : forall R (s s' t t' : term),
                R s s' -> R t t' -> Compat R (Apply s t) (Apply s' t').
 Proof. eq_principle. Qed.
-Definition C_Constant' : forall R (v v' : @some valueOf), v = v' -> Compat R (Constant v) (Constant v').
+Definition C_Constant' : forall R (c c' : constant), c = c' -> Compat R (Constant c) (Constant c').
 Proof. eq_principle. Qed.
 Definition C_Builtin' : forall R (f f' : DefaultFun), f = f' -> Compat R (Builtin f) (Builtin f').
 Proof. eq_principle. Qed.

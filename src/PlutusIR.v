@@ -1,4 +1,5 @@
 Require Import Coq.Strings.String.
+Require Import Coq.Init.Byte.
 Require Import Coq.Lists.List.
 Require Import Coq.Arith.PeanoNat.
 Require Import Coq.ZArith.BinInt.
@@ -92,20 +93,6 @@ Inductive DefaultUni : Type :=
 
 QCDerive EnumSized for DefaultUni.
 
-(** Existentials as a datype *)
-Inductive some {f : DefaultUni -> Type} :=
-  Some' : forall {u : DefaultUni}, f u -> some.
-Arguments some _ : clear implicits.
-
-(** Builtin types *)
-Inductive typeIn (u : DefaultUni) :=
-  TypeIn : typeIn u.
-Arguments TypeIn _ : clear implicits.
-
-(* This synonym exists since the Haskell plutus implementation cannot reuse
-   the Some type. In Coq we can. *)
-Definition SomeTypeIn (ty : DefaultUni) := @Some' typeIn ty (TypeIn ty).
-
 
 Inductive Data :=
   | DataConstr : Z -> list Data -> Data
@@ -121,7 +108,7 @@ Inductive Data :=
 Fixpoint uniType_option (x : DefaultUni) : option Set :=
   match x with
     | DefaultUniInteger    => Some Z
-    | DefaultUniByteString => Some string
+    | DefaultUniByteString => Some (list byte)
     | DefaultUniString => Some string
     | DefaultUniUnit => Some unit
     | DefaultUniData => Some Data
@@ -160,9 +147,10 @@ Definition uniType (x : DefaultUni) : Type :=
     | Some ty => ty
   end.
 
-Inductive valueOf (u : DefaultUni) :=
-  ValueOf : uniType u -> valueOf u.
-Arguments ValueOf _ _ : clear implicits.
+(* Constants are coq values of the interpretation of some type in
+   DefaultUni *)
+Inductive constant :=
+  ValueOf : forall (T : DefaultUni), uniType T -> constant.
 
 (** Built-in functions*)
 Inductive DefaultFun :=
@@ -255,6 +243,9 @@ Inductive DefaultFun :=
     (* Keccak_256, Blake2b_224 *)
     | Keccak_256
     | Blake2b_224
+    (* Conversions *)
+    | IntegerToByteString
+    | ByteStringToInteger
 .
 
 Definition name := string.
@@ -273,7 +264,7 @@ Inductive ty :=
   | Ty_Fun : ty -> ty -> ty
   | Ty_IFix : ty -> ty -> ty
   | Ty_Forall : binderTyname -> kind -> ty -> ty
-  | Ty_Builtin : @some typeIn -> ty
+  | Ty_Builtin : DefaultUni -> ty
   | Ty_Lam : binderTyname -> kind -> ty -> ty
   | Ty_App : ty -> ty -> ty
   (* | Ty_SOP : list (list ty) -> ty *)
@@ -301,7 +292,7 @@ Inductive term :=
   | TyAbs    : binderTyname -> kind -> term -> term
   | LamAbs   : binderName -> ty -> term -> term
   | Apply    : term -> term -> term
-  | Constant : @some valueOf -> term
+  | Constant : constant -> term
   | Builtin  : DefaultFun -> term
   | TyInst   : term -> ty -> term
   | Error    : ty -> term
@@ -378,15 +369,31 @@ Fixpoint context_apply (C : context) (t : term) :=
 (** ** Trace of compilation *)
 Inductive pass :=
   | PassRename
-  | PassTypeCheck
-  | PassInline : list name -> pass
   | PassDeadCode
   | PassThunkRec
-  | PassFloatTerm
-  | PassLetNonStrict
-  | PassLetTypes
-  | PassLetRec
-  | PassLetNonRec.
+  | PassRecSplit
+  | PassLetMerge
+  | PassFloatIn
+  | PassFloatOut
+  | PassCompileLetNonStrict
+  | PassCompileLetType
+  | PassCompileLetData
+  | PassCompileLetRec
+  | PassCompileLetNonRec
+
+  | PassInline
+  | PassUnwrapWrap
+  | PassCaseReduce
+  | PassCaseOfCase
+  | PassBeta
+  | PassKnownConstructor
+  | PassStrictifyBindings
+  | PassEvaluateBuiltins
+  | PassRewriteRules
+
+  | PassTypeCheck
+  | PassOther : string -> pass
+  .
 
 Inductive compilation_trace :=
   | CompilationTrace : term -> list (pass * term) -> compilation_trace.
@@ -424,7 +431,7 @@ Section term__ind.
     (H_TyAbs   : forall (s : string) (k : kind) (t : term), P t -> P (TyAbs s k t))
     (H_LamAbs  : forall (s : string) (t : ty) (t0 : term), P t0 -> P (LamAbs s t t0))
     (H_Apply   : forall t : term, P t -> forall t0 : term, P t0 -> P (Apply t t0))
-    (H_Constant : forall s : some valueOf, P (Constant s))
+    (H_Constant : forall (c : constant), P (Constant c))
     (H_Builtin : forall d : DefaultFun, P (Builtin d))
     (H_TyInst  : forall t : term, P t -> forall t0 : ty, P (TyInst t t0))
     (H_Error   : forall t : ty, P (Error t))
@@ -466,7 +473,7 @@ Section term__ind.
       | IWrap ty1 ty2 t => H_IWrap ty1 ty2 t (term__ind t)
       | Unwrap t        => H_Unwrap t (term__ind t)
       | Error ty        => H_Error ty
-      | Constant v      => H_Constant v
+      | Constant c      => H_Constant c
       | Builtin f       => H_Builtin f
       | Constr i ts     => H_Constr i ts (terms__ind term__ind ts)
       | Case t ts      => H_Case t (term__ind t) ts (terms__ind term__ind ts)
@@ -494,7 +501,7 @@ Section term_rect.
     (H_TyAbs   : forall s (k : kind) (t : term), P t -> P (TyAbs s k t))
     (H_LamAbs  : forall s t (t0 : term), P t0 -> P (LamAbs s t t0))
     (H_Apply   : forall t : term, P t -> forall t0 : term, P t0 -> P (Apply t t0))
-    (H_Constant : forall s : some valueOf, P (Constant s))
+    (H_Constant : forall (c : constant), P (Constant c))
     (H_Builtin : forall d : DefaultFun, P (Builtin d))
     (H_TyInst  : forall t : term, P t -> forall t0 : ty, P (TyInst t t0))
     (H_Error   : forall t : ty, P (Error t))
@@ -537,7 +544,7 @@ Section term_rect.
       | IWrap ty1 ty2 t => @H_IWrap ty1 ty2 t (term_rect' t)
       | Unwrap t        => @H_Unwrap t (term_rect' t)
       | Error ty        => @H_Error ty
-      | Constant v      => @H_Constant v
+      | Constant c      => @H_Constant c
       | Builtin f       => @H_Builtin f
       | Constr i ts     => @H_Constr i ts (terms_rect' term_rect' ts)
       | Case t ts      => @H_Case t (term_rect' t) ts (terms_rect' term_rect' ts)
@@ -553,21 +560,41 @@ End term_rect.
 Section ty_fold.
 
   Context
-    {R : Set}.
+    (R : Set) (* Result type for ty*)
+    (S : Set) (* Result type for list ty (sums in SOP) *)
+    (P : Set) (* Result type for list ty (products in SOP) *)
+    .
 
   Context
     (f_Var : name -> R)
     (f_Fun : R -> R -> R)
     (f_IFix : R -> R -> R)
     (f_Forall :  binderName -> kind -> R -> R)
-    (f_Builtin : @some typeIn -> R)
+    (f_Builtin : DefaultUni -> R)
     (f_Lam :  binderName -> kind -> R -> R)
     (f_App : R -> R -> R)
-    (f_SOP_prod_cons : R -> R -> R)
-    (f_SOP_prod_nil : R)
-    (f_SOP_sum_cons : R -> R -> R)
-    (f_SOP_sum_nil : R)
+    (f_SOP : S -> R)
+    (f_SOP_sum_cons : P -> S -> S)
+    (f_SOP_sum_nil : S)
+    (f_SOP_prod_cons : R -> P -> P)
+    (f_SOP_prod_nil : P)
     .
+
+  Definition fold_SOP (fold : ty -> R) : list (list ty) -> S :=
+      (fix fold_sum xs := match xs with
+        | ts :: xs' =>
+          f_SOP_sum_cons
+            ((fix fold_prod ts :=
+              match ts with
+              | ty :: ts' => f_SOP_prod_cons (fold ty) (fold_prod ts')
+              | [] => f_SOP_prod_nil
+              end
+            ) ts)
+            (fold_sum xs')
+        | [] => f_SOP_sum_nil
+      end
+      )
+      .
 
   Definition ty_fold := fix fold ty :=
     match ty with
@@ -578,62 +605,92 @@ Section ty_fold.
     | Ty_Builtin b    => f_Builtin b
     | Ty_Lam v k t    => f_Lam v k (fold t)
     | Ty_App t1 t2    => f_App (fold t1) (fold t2)
-    (*
-    | Ty_SOP xs => 
-      ((fix f xs := match xs with
-        | ys :: xs' =>
-          f_SOP_sum_cons
-            ((fix g ys :=
-              match ys with
-              | ty :: ys' => f_SOP_prod_cons (fold ty) (g ys')
-              | [] => f_SOP_prod_nil
-              end
-            ) ys)
-            (f xs')
-        | [] => f_SOP_sum_nil
-      end
-      ) xs) *)
+    (* | Ty_SOP xs       => f_SOP (fold_SOP fold xs)  *)
     end
 .
-
-  Definition ty_alg (ty : ty) : Set := match ty with
-    | Ty_Var v        => name -> R
-    | Ty_Fun t1 t2    => R -> R -> R
-    | Ty_IFix t1 t2   => R -> R -> R
-    | Ty_Forall v k t =>  binderName -> kind -> R -> R
-    | Ty_Builtin b    => @some typeIn -> R
-    | Ty_Lam v k t    =>  binderName -> kind -> R -> R
-    | Ty_App t1 t2    => R -> R -> R
-    (* | Ty_SOP tys      => (R -> R -> R * R * R -> R -> R * R) *)
-    end.
 
 End ty_fold.
 
 
-Definition ty_endo (m_custom : forall τ, option (@ty_alg ty τ)) := fix f τ :=
-  match m_custom τ with
-    | Some f_custom => match τ return ty_alg τ -> ty with
-      | Ty_Var v        => fun f_custom => f_custom v
-      | Ty_Fun t1 t2    => fun f_custom => f_custom (f t1) (f t2)
-      | Ty_IFix t1 t2   => fun f_custom => f_custom (f t1) (f t2)
-      | Ty_Forall v k t => fun f_custom => f_custom v k (f t)
-      | Ty_Builtin b    => fun f_custom => f_custom b
-      | Ty_Lam v k t    => fun f_custom => f_custom v k (f t)
-      | Ty_App t1 t2    => fun f_custom => f_custom (f t1) (f t2)
-    end f_custom
-    | None =>
-      match τ with
-      | Ty_Var v        => Ty_Var v
-      | Ty_Fun t1 t2    => Ty_Fun (f t1) (f t2)
-      | Ty_IFix t1 t2   => Ty_IFix (f t1) (f t2)
-      | Ty_Forall v k t => Ty_Forall v k (f t)
-      | Ty_Builtin b    => Ty_Builtin b
-      | Ty_Lam v k t    => Ty_Lam v k (f t)
-      | Ty_App t1 t2    => Ty_App (f t1) (f t2)
-      end
+Section Folds_Alt.
+
+  Context (R S P : Set).
+  (* Alternative formulation where the function types of the algebra are determined
+     by the constructor. An algebra can then be given as a function
+
+       forall T, ty_alg T
+
+     See fold_alg for the corresponding algebra.
+     *)
+  Definition ty_alg (ty : ty) : Set := match ty with
+    | Ty_Var _        => tyname -> R
+    | Ty_Fun _ _      => R -> R -> R
+    | Ty_IFix _ _     => R -> R -> R
+    | Ty_Forall _ _ _ => binderName -> kind -> R -> R
+    | Ty_Builtin _    => DefaultUni -> R
+    | Ty_Lam _ _ _    => binderName -> kind -> R -> R
+    | Ty_App _ _      => R -> R -> R
+    (* | Ty_SOP _        =>   (S -> R)
+                         * (P -> S -> S)
+                         * S
+                         * (R -> P -> P)
+                         * P *)
+    end.
+
+  Definition fold_alg (alg : forall T, ty_alg T) : ty -> R := fix fold T :=
+    match T return ty_alg T -> R with
+    | Ty_Var v        => fun f => f v
+    | Ty_Fun t1 t2    => fun f => f (fold t1) (fold t2)
+    | Ty_IFix t1 t2   => fun f => f (fold t1) (fold t2)
+    | Ty_Forall v k t => fun f => f v k (fold t)
+    | Ty_Builtin b    => fun f => f b
+    | Ty_Lam v k t    => fun f => f v k (fold t)
+    | Ty_App t1 t2    => fun f => f (fold t1) (fold t2)
+    (* | Ty_SOP xs       => fun '(f_SOP, f_cons_s, f_nil_s, f_cons_p, f_nil_p)
+        => f_SOP (fold_SOP R S P f_cons_s f_nil_s f_cons_p f_nil_p fold xs) *)
+    end (alg T)
+  .
+End Folds_Alt.
+
+(* A transformation algebra returns the original types for ty, sums and products *)
+(* Definition ty_alg_transform T : Set := ty_alg ty (list (list ty)) (list ty) T. *)
+Definition ty_alg_transform T : Set := ty_alg ty T.
+
+Definition id_alg (T : ty) : ty_alg_transform T :=
+  match T return ty_alg_transform T with
+    | Ty_Var _        => Ty_Var
+    | Ty_Fun _ _      => Ty_Fun
+    | Ty_IFix _ _     => Ty_IFix
+    | Ty_Forall _ _ _ => Ty_Forall
+    | Ty_Builtin _    => Ty_Builtin
+    | Ty_Lam _ _ _    => Ty_Lam
+    | Ty_App _ _      => Ty_App
+    (* | Ty_SOP _        => (Ty_SOP, cons, nil, cons, nil) *)
+  end
+.
+
+
+(* Extend a partial transformation to a total tranformation (using the identity) *)
+Definition to_total :
+  (forall T, option (ty_alg_transform T)) ->
+  (forall T, (ty_alg_transform T)) :=
+fun alg_partial T =>
+  match alg_partial T with
+    | None => id_alg T
+    | Some f => f
   end.
 
-Definition unitVal : term := Constant (Some' (ValueOf DefaultUniUnit tt)).
+
+
+(* Transform a type, recursively applies the transformation before applying the
+* provided partial function (or the identity) *)
+(* Definition ty_transform (custom : forall T, option (ty_alg_transform T)) : ty -> ty :=
+  fold_alg _ _ _ (to_total custom). *)
+
+Definition ty_transform (custom : forall T, option (ty_alg_transform T)) : ty -> ty :=
+  fold_alg _ (to_total custom).
+
+Definition unitVal : term := Constant (ValueOf DefaultUniUnit tt).
 
 
 

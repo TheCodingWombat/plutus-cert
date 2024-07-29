@@ -8,11 +8,11 @@ Import ListNotations.
 
 
 Definition Term_Unit : term :=
-  Constant (@Some' valueOf DefaultUniUnit (@ValueOf DefaultUniUnit tt))
+  Constant (ValueOf DefaultUniUnit tt)
 .
 
 Definition Ty_Unit : ty :=
-  Ty_Builtin (@Some' typeIn DefaultUniUnit (TypeIn _)).
+  Ty_Builtin DefaultUniUnit.
 
 Definition eval' t v := exists j, eval t v j.
 Notation "t '==>' v" := (eval' t v) (at level 10).

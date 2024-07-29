@@ -20,7 +20,7 @@ From PlutusCert Require Import
 Import ListNotations.
 
 (*
-   Returns `Just t'` if bindings were desugared correctly, where t' is the rest
+   Returns `Some t'` if bindings were desugared correctly, where t' is the rest
    of the desugared term.
 
    Note that dec_Term has to be passed manually. In this form, the
@@ -43,7 +43,7 @@ Section Bindings.
 
   Fixpoint bindings_to_apps (bs : list binding) : option (list (term -> term)) :=
     match bs with
-      | []        => Just []
+      | []        => Some []
       | TermBind Strict (VarDecl v ty) rhs :: bs =>
           option_map
             (cons (fun t => Apply (LamAbs v ty t) rhs))
@@ -53,7 +53,7 @@ Section Bindings.
 
   Fixpoint dec_Bindings' (bs : list binding) (t : term) {struct bs} : option term :=
     match bs with
-      | nil       => Just t
+      | nil       => Some t
       | cons b bs => match b, t with
         | TermBind Strict (VarDecl v ty) rhs, Apply (LamAbs v' ty' body') rhs' =>
           if (String.eqb v v' && Ty_eqb ty ty' && dec_Term rhs rhs')
@@ -73,7 +73,7 @@ Fixpoint dec_Term (x y : term) {struct x} : bool := match x, y with
   (* non-recursive bindings should be desugared *)
   | Let NonRec bs body, t =>
        match dec_Bindings' dec_Term bs t with
-        | Just body' => dec_Term body body'
+        | Some body' => dec_Term body body'
         | Nothing    => false
        end
 
@@ -84,7 +84,7 @@ Fixpoint dec_Term (x y : term) {struct x} : bool := match x, y with
   | TyAbs n k t    , TyAbs n' k' t'     => String.eqb n n' && Kind_eqb k k' && dec_Term t t'
   | LamAbs n ty t  , LamAbs n' ty' t'   => String.eqb n n' && Ty_eqb ty ty' && dec_Term t t'
   | Apply s t      , Apply s' t'        => dec_Term s s' && dec_Term t t'
-  | Constant c     , Constant c'        => some_valueOf_eqb c c'
+  | Constant c     , Constant c'        => constant_eqb c c'
   | Builtin f      , Builtin f'         => func_eqb f f'
   | TyInst t ty    , TyInst t' ty'      => dec_Term t t' && Ty_eqb ty ty'
   | Error ty       , Error ty'          => Ty_eqb ty ty'
@@ -171,7 +171,7 @@ Ltac rewrite_reflection :=
     | H : String.eqb _ _ = true |- _ => rewrite String.eqb_eq in H
     | H : Kind_eqb _ _ = true |- _ => rewrite Kind_eqb_eq in H
     | H : Ty_eqb _ _ = true |- _ => rewrite Ty_eqb_eq in H
-    | H : some_valueOf_eqb _ _ = true |- _ => rewrite some_valueOf_eqb_eq in H
+    | H : constant_eqb _ _ = true |- _ => rewrite constant_eqb_eq in H
     | H : func_eqb _ _ = true |- _ => rewrite func_eqb_eq in H
     | H : Nat.eqb _ _ = true |- _ => rewrite Nat.eqb_eq in H
     | H : strictness_eqb _ _ = true |- _ => rewrite strictness_eqb_eq in H
@@ -204,7 +204,7 @@ Ltac bwd_reflection :=
     | |- String.eqb _ _ = true => rewrite String.eqb_eq; reflexivity
     | |- Kind_eqb _ _ = true   => rewrite Kind_eqb_eq; reflexivity
     | |- Ty_eqb _ _ = true   => rewrite Ty_eqb_eq; reflexivity
-    | |- some_valueOf_eqb _ _ = true => rewrite some_valueOf_eqb_eq; reflexivity
+    | |- constant_eqb _ _ = true => rewrite constant_eqb_eq; reflexivity
     | |- func_eqb _ _ = true => rewrite func_eqb_eq; reflexivity
     | |- Nat.eqb _ _ = true => rewrite Nat.eqb_eq; reflexivity
     | |- strictness_eqb _ _ = true => rewrite strictness_eqb_eq; reflexivity

@@ -72,7 +72,7 @@ refine(
     match t_var as x return t_var = x -> _ with
       | Var v => fun eq_t =>
         match lookup string_dec v env with
-          | Just (existT _ t in_env) => Inl_Var in_env <$> is_inline_term n t t' env
+          | Some (existT _ t in_env) => Inl_Var in_env <$> is_inline_term n t t' env
           | Nothing => Nothing
         end
       | _     => fun _ => Nothing
@@ -135,7 +135,7 @@ Show Proof.
   }
 
   [nil]: {.
-    refine (Just Inl_Binding_nil).
+    refine (Some Inl_Binding_nil).
   }
 }
 
@@ -172,11 +172,11 @@ Show Proof.
   }
   [tyty]: {.
     subst.
-    refine (Just Inl_OtherBind).
+    refine (Some Inl_OtherBind).
   }
   [dtdt]: {.
     subst.
-    refine (Just Inl_OtherBind).
+    refine (Some Inl_OtherBind).
   }
 }
 
@@ -286,20 +286,20 @@ Show Proof.
   [constant]: {.
     subst.
     refine (
-      Just (C_Constant _)
+      Some (C_Constant _)
     ).
   }
   [builtin]: {.
     subst.
     refine (
-      Just (C_Builtin _)
+      Some (C_Builtin _)
     ).
   }
 
   [error]: {.
     subst.
     refine (
-      Just (C_Error _)
+      Some (C_Error _)
     ).
   }
 }
@@ -337,10 +337,10 @@ Show Proof.
     refine (C_TermBind _ <$> is_inline_term n t t' env); exact tt. (* fake types*)
     }
   [typebind]: {.
-    subst. refine (Just _). constructor.
+    subst. refine (Some _). constructor.
   }
   [datatypebind]: {.
-    subst. refine (Just _). constructor.
+    subst. refine (Some _). constructor.
   }
 }
 
@@ -365,7 +365,7 @@ Show Proof.
   }
 
   [nil]: {.
-    refine (Just (Compat_Bindings_Nil _)).
+    refine (Some (Compat_Bindings_Nil _)).
   }
 }
 Defined.

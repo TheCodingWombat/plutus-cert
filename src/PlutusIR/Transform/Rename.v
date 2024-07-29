@@ -20,6 +20,37 @@ Import AFI.
 Definition ctx := list (string * string).
 
 
+(* Note [Renaming Translation Relation]
+
+When renaming variables, it is crucial to avoid capturing/shadowing:
+
+  λ x . λ y . x + y
+       ̸▷
+  λ z . λ z . z + z
+
+When defining a renaming, we therefore need to consider the other
+variables that are in scope. In the translation relation we keep track of
+this using contexts Δ and Γ (for type- and term-level variables respectively).
+
+Suppose we have these two terms
+
+  pre-term:  (λ x. t1)
+  post-term: (λ z. t2)
+
+i.e. x is being renamed to z. This is valid if no other variable in Γ is being
+renamed to z. Because if there were another variable, say y, that is renamed to
+z, we may _capture_ any of its occurrences by introducing another z binder.
+
+We can loosen that condition: x can be safely renamed to z if for any other (y,
+z) in Γ, there are no occurrences of y in the pre-term. That way, we allow some safe
+forms of shadowing. For example:
+
+  λ x . map (\y -> y + 1) x
+    ▷
+  λ z . map (\z -> z + 1) z
+
+*)
+
 (* Binding variable x does not capture free variables in (the pre-term) t if they were renamed
    according to Γ *)
 Definition no_capture x (Γ : ctx) t :=
@@ -32,7 +63,7 @@ Definition no_ty_capture α (Δ : ctx) τ :=
   forall β, In (β, α) Δ -> ~ AFI.Ty.appears_free_in β τ.
 
 
-Inductive rename_tvs (Δ : ctx) (cs : list vdecl) : list tvdecl -> list tvdecl -> ctx -> Type :=
+Inductive rename_tvs (Δ : ctx) (cs : list vdecl) : list tvdecl -> list tvdecl -> ctx -> Prop :=
 
   | rn_tvs_nil :
       rename_tvs Δ cs [] [] []
@@ -45,8 +76,11 @@ Inductive rename_tvs (Δ : ctx) (cs : list vdecl) : list tvdecl -> list tvdecl -
       rename_tvs Δ cs (TyVarDecl α k :: tvs) (TyVarDecl β k :: tvs') ((α, β) :: Δ_tvs)
 .
 
-Inductive rename_ty (Δ : ctx) : ty -> ty -> Type :=
+Inductive rename_ty (Δ : ctx) : ty -> ty -> Prop :=
 
+
+   (* Note: it is important to use lookup, not In, since only the most recently
+      bound variable can be renamed *)
    | rn_Ty_Var : forall α α',
       lookup α Δ = Some α' ->
       rename_ty Δ (Ty_Var α) (Ty_Var α')
@@ -80,15 +114,15 @@ Inductive rename_ty (Δ : ctx) : ty -> ty -> Type :=
       rename_ty Δ (Ty_App σ τ) (Ty_App σ' τ')
 .
 
-Inductive rename (Γ Δ : ctx) : term -> term -> Type :=
-  | rn_Var : forall x y,
-      lookup x Γ = Some y ->
-      rename Γ Δ  (Var x) (Var y)
+Inductive rename (Δ Γ: ctx) : term -> term -> Prop :=
+  | rn_Var : forall x x',
+      lookup x Γ = Some x' ->
+      rename Δ Γ (Var x) (Var x')
 
   | rn_Let_Rec : forall bs bs' t t',
       forall Γ_bs Δ_bs,
-      rename_Bindings_Rec (Γ_bs ++ Γ) (Δ_bs ++ Δ) Γ_bs Δ_bs bs bs' ->
-      rename (Γ_bs ++ Γ) (Δ_bs ++ Δ) t t' ->
+      rename_bindings_Rec (Δ_bs ++ Δ) (Γ_bs ++ Γ) Δ_bs Γ_bs bs bs' ->
+      rename (Δ_bs ++ Δ) (Γ_bs ++ Γ) t t' ->
 
       (* All bound type- and term variables in the bindings should not capture _in the body_.
 
@@ -101,17 +135,17 @@ Inductive rename (Γ Δ : ctx) : term -> term -> Type :=
       NoDup (bvbs bs') ->
       NoDup (btvbs bs') ->
 
-      rename Γ Δ (Let Rec bs t) (Let Rec bs' t')
+      rename Δ Γ (Let Rec bs t) (Let Rec bs' t')
 
   (* If the decision procedure becomes problematic because of not structurally smaller terms,
-     these two rules should be refactored into a relation similar to rename_Bindings_Rec *)
+     these two rules should be refactored into a relation similar to rename_bindings_Rec *)
   | rn_Let_NonRec_nil : forall t t',
-      rename Γ Δ t t' ->
-      rename Γ Δ (Let NonRec [] t) (Let NonRec [] t')
+      rename Δ Γ t t' ->
+      rename Δ Γ (Let NonRec [] t) (Let NonRec [] t')
 
   | rn_Let_NonRec_cons : forall Γ_b Δ_b b b' bs bs' t t',
-      rename_binding Γ Δ Γ_b Δ_b b b' ->
-      rename (Γ_b ++ Γ) (Δ_b ++ Δ) (Let NonRec bs t) (Let NonRec bs' t') ->
+      rename_binding Δ Γ Γ_b Δ_b b b' ->
+      rename (Δ_b ++ Δ) (Γ_b ++ Γ) (Let NonRec bs t) (Let NonRec bs' t') ->
 
       (* All bound (type) variables in the let should not capture.
 
@@ -120,59 +154,59 @@ Inductive rename (Γ Δ : ctx) : term -> term -> Type :=
       Forall (fun '(_, x') => no_capture x' Γ (Let NonRec bs t)) Γ_b ->
       Forall (fun '(_, α') => no_captureA α' Δ (Let NonRec bs t)) Δ_b ->
 
-      rename Γ Δ (Let NonRec (b :: bs) t) (Let NonRec (b' :: bs') t')
+      rename Δ Γ (Let NonRec (b :: bs) t) (Let NonRec (b' :: bs') t')
 
   | rn_TyAbs : forall α α' k t t',
-      rename ((α, α') :: Γ) Δ t t' ->
+      rename ((α, α') :: Δ) Γ t t' ->
       no_captureA α' Δ t ->
-      rename Γ Δ (TyAbs α k t) (TyAbs α' k t')
+      rename Δ Γ (TyAbs α k t) (TyAbs α' k t')
 
   | rn_LamAbs : forall x x' τ τ' t t',
       rename_ty Δ τ τ' ->
-      rename ((x, x') :: Γ) Δ t t' ->
-      no_capture x' Δ t ->
-      rename Γ Δ (LamAbs x τ t) (LamAbs x' τ' t')
+      rename Δ ((x, x') :: Γ) t t' ->
+      no_capture x' Γ t ->
+      rename Δ Γ (LamAbs x τ t) (LamAbs x' τ' t')
 
   | rn_Apply : forall s t s' t',
-      rename Γ Δ s s' ->
-      rename Γ Δ t t' ->
-      rename Γ Δ (Apply s t) (Apply s' t')
+      rename Δ Γ s s' ->
+      rename Δ Γ t t' ->
+      rename Δ Γ (Apply s t) (Apply s' t')
 
   | rn_Constant : forall c,
-      rename Γ Δ (Constant c) (Constant c)
+      rename Δ Γ (Constant c) (Constant c)
 
   | rn_Builtin : forall b,
-      rename Γ Δ (Builtin b) (Builtin b)
+      rename Δ Γ (Builtin b) (Builtin b)
 
   | rn_TyInst : forall t t' τ τ',
-      rename Γ Δ t t' ->
+      rename Δ Γ t t' ->
       rename_ty Δ τ τ' ->
-      rename Γ Δ (TyInst t τ) (TyInst t' τ')
+      rename Δ Γ (TyInst t τ) (TyInst t' τ')
 
   | rn_Error : forall τ τ',
       rename_ty Δ τ τ' ->
-      rename Γ Δ (Error τ) (Error τ')
+      rename Δ Γ (Error τ) (Error τ')
 
   | rn_IWrap σ τ σ' τ' t t':
       rename_ty Δ σ σ' ->
       rename_ty Δ τ τ' ->
-      rename Γ Δ t t' ->
-      rename Γ Δ (IWrap σ τ t) (IWrap σ' τ' t')
+      rename Δ Γ t t' ->
+      rename Δ Γ (IWrap σ τ t) (IWrap σ' τ' t')
 
   | rn_Unwrap : forall t t',
-      rename Γ Δ t t' ->
-      rename Γ Δ (Unwrap t) (Unwrap t')
+      rename Δ Γ t t' ->
+      rename Δ Γ (Unwrap t) (Unwrap t')
 
-with rename_binding (Γ Δ : ctx) : ctx -> ctx -> binding -> binding -> Type :=
+with rename_binding (Δ Γ : ctx) : ctx -> ctx -> binding -> binding -> Prop :=
 
   | rn_TermBind : forall s x x' τ τ' t t',
       rename_ty Δ τ τ' ->
-      rename Γ Δ t t' ->
-      rename_binding Γ Δ [(x, x')] [] (TermBind s (VarDecl x τ) t) (TermBind s (VarDecl x' τ') t')
+      rename Δ Γ t t' ->
+      rename_binding Δ Γ [(x, x')] [] (TermBind s (VarDecl x τ) t) (TermBind s (VarDecl x' τ') t')
 
   | rn_TypeBind : forall α α' k τ τ',
       rename_ty Δ τ τ' ->
-      rename_binding Γ Δ [] [(α, α')] (TypeBind (TyVarDecl α k) τ) (TypeBind (TyVarDecl α' k) τ')
+      rename_binding Δ Γ [] [(α, α')] (TypeBind (TyVarDecl α k) τ) (TypeBind (TyVarDecl α' k) τ')
 
   | rn_DatatypeBind : forall α α' k tvs tvs' elim elim' cs cs',
       forall Δ_tvs Γ_cs Γ_b Δ_b,
@@ -187,42 +221,299 @@ with rename_binding (Γ Δ : ctx) : ctx -> ctx -> binding -> binding -> Type :=
       Δ_b = [(α, α')] ->
 
 
-      rename_binding Γ Δ Γ_b Δ_b
+      rename_binding Δ Γ Γ_b Δ_b
         (DatatypeBind (Datatype (TyVarDecl α k) tvs elim cs))
         (DatatypeBind (Datatype (TyVarDecl α' k) tvs' elim' cs'))
 
 (*
-  rename_Bindings_Rec is also indexed over contexts Γ_bs, Δ_bs, which are respectively
+  rename_bindings_Rec is also indexed over contexts Γ_bs, Δ_bs, which are respectively
   the bound term and type variables of the recursive bindings.
 *)
-with rename_Bindings_Rec (Γ Δ : ctx) : ctx -> ctx -> list binding -> list binding -> Type :=
+with rename_bindings_Rec (Δ Γ : ctx) : ctx -> ctx -> list binding -> list binding -> Prop :=
 
   | rn_Bindings_Rec_nil :
-      rename_Bindings_Rec Γ Δ [] [] [] []
+      rename_bindings_Rec Δ Γ [] [] [] []
 
   | rn_Bindings_Rec_cons : forall b b' bs bs',
-      forall Γ_b Γ_bs Δ_b Δ_bs,
-      rename_binding Γ Δ Γ_b Δ_b b b' ->
-      rename_Bindings_Rec Γ Δ Γ_bs Δ_bs bs bs' ->
-      rename_Bindings_Rec Γ Δ (Γ_b ++ Γ_bs) (Δ_b ++ Δ_bs) (b :: bs) (b' :: bs')
+      forall Δ_b Δ_bs Γ_b Γ_bs,
+      rename_binding Δ Γ Δ_b Γ_b b b' ->
+      rename_bindings_Rec Δ Γ Δ_bs Γ_bs bs bs' ->
+      rename_bindings_Rec Δ Γ (Δ_b ++ Δ_bs) (Γ_b ++ Γ_bs) (b :: bs) (b' :: bs')
 
 (*
   rename_constrs is also indexed over context Γ_cs, which are
   the renamings of the constructors
 *)
-with rename_constrs (Γ Δ : ctx) : list vdecl -> list vdecl -> ctx -> Type :=
+with rename_constrs (Δ Γ : ctx) : list vdecl -> list vdecl -> ctx -> Prop :=
 
   | rn_constrs_nil :
-      rename_constrs Γ Δ [] [] []
+      rename_constrs Δ Γ [] [] []
 
   | rn_constrs_cons : forall x x' τ τ' cs cs' Γ_cs,
       rename_ty Δ τ τ' ->
-      rename_constrs Γ Δ cs cs' Γ_cs ->
-      rename_constrs Γ Δ
+      rename_constrs Δ Γ cs cs' Γ_cs ->
+      rename_constrs Δ Γ
         (VarDecl x τ :: cs)
         (VarDecl x' τ' :: cs')
         ((x, x') :: Γ_cs)
   .
 
+Scheme rename__ind := Minimality for rename Sort Prop
+  with rename_constrs__ind := Minimality for rename_constrs Sort Prop
+  with rename_bindings_Rec__ind := Minimality for rename_bindings_Rec Sort Prop
+  with rename_binding__ind := Minimality for rename_binding Sort Prop
+.
+
+Combined Scheme rename__multind from
+  rename__ind,
+  rename_constrs__ind,
+  rename_bindings_Rec__ind,
+  rename_binding__ind
+.
 
 (* MetaCoq Run (run_print_rules rename). *)
+
+From PlutusCert Require Import Dynamic.Substitution.
+From PlutusCert Require Import Dynamic.Bigstep.
+
+Require Import PlutusCert.PlutusIR.
+Import PlutusNotations.
+
+(* no_capture facts *)
+
+Lemma no_capture__subst x Γ v y t :
+  closed v ->
+  no_capture x Γ <{ [v / y] t }>
+.
+Admitted.
+
+Lemma no_captureA__subst α Γ v y t :
+  closed v ->
+  no_captureA α Γ <{ [v / y] t }>
+.
+Admitted.
+
+
+(* rename facts *)
+
+Lemma rename_closed_l t t' : rename [] [] t t' -> closed t.
+Admitted.
+
+Lemma rename_closed_r t t' : rename [] [] t t' -> closed t.
+Admitted.
+
+Lemma rename_is_error {Δ Γ v v'} : rename Δ Γ v v' -> is_error v <-> is_error v'.
+Admitted.
+
+Notation "Γ '|--' x '~>' y" := (@lookup string x Γ = Some y) (at level 10).
+
+Fixpoint delete {A} (k : string) (xs : list (string * A)) : list (string * A) :=
+  match xs with
+  | [] => []
+  | (k', v) :: xs => if String.eqb k k' then xs else (k', v) :: delete k xs
+  end
+.
+
+Lemma lookup_uniq Γ x y z :
+  Γ |-- x ~> y ->
+  Γ |-- x ~> z ->
+  y = z
+.
+Proof.
+  intros.
+  rewrite H in H0.
+  inversion H0.
+  reflexivity.
+Qed.
+
+Lemma lookup_weaken Γ x x' y y' :
+  x <> y ->
+  Γ |-- x ~> x' ->
+  ((y, y') :: Γ) |-- x ~> x'.
+Proof.
+Admitted.
+
+Lemma lookup_In {A} k (v : A) xs :
+  lookup k xs = Some v ->
+  In (k, v) xs
+.
+Admitted.
+
+Lemma lookup_head : forall x y z Γ,
+  ((x, y) :: Γ) |-- x ~> z <-> y = z.
+Admitted.
+
+Require Import Coq.Program.Equality.
+Lemma rename_afi Δ Γ x x' t t' :
+  rename Δ Γ t t' ->
+  Γ |-- x ~> x' ->
+  Term.appears_free_in x t -> Term.appears_free_in x' t'
+.
+Proof.
+  intros H_ren H_x_x' H_afi_x_t.
+  dependent induction H_ren.
+    all: try (solve [inversion H_afi_x_t; subst; auto]).
+    - (* Var *)
+      rename x0 into y.
+      rename x'0 into y'.
+      inversion H_afi_x_t; subst.
+      assert (x' = y') by eauto using lookup_uniq.
+      subst x'.
+      constructor.
+    - (* Let Rec *)
+      admit.
+    - (* Let NonRec nil *)
+      admit.
+    - (* Let NonRec cons *)
+      admit.
+    -  (* LamAbs *)
+      rename x0 into y, x'0 into y'.
+      destruct (string_dec x y).
+      + subst y.
+        inversion H_afi_x_t; subst.
+        contradiction.
+      + unfold no_capture in *. 
+        constructor.
+        * intros H_eq; subst y'.
+           inversion H_afi_x_t; subst.
+           match goal with
+             H : Term.appears_free_in x t |- _ => contradict H
+           end.
+           auto using lookup_In.
+        * inversion H_afi_x_t; subst.
+          auto using lookup_weaken.
+Admitted.
+
+Lemma rename_afi_rev {Δ Γ x x' t t'} :
+  rename Δ Γ t t' ->
+  Γ |-- x ~> x' ->
+  Term.appears_free_in x' t' -> Term.appears_free_in x t
+.
+Admitted.
+
+Lemma rename_weaken : forall Δ Γ t t',
+  rename [] [] t t' ->
+  rename Δ Γ t t'.
+Admitted.
+
+Lemma rename_strengthen : forall Γ Δ x y z,
+  x <> y ->
+  rename Δ Γ (Var y) (Var z) ->
+  rename Δ (delete x Γ) (Var y) (Var z)
+.
+Admitted.
+
+Lemma subst_neq x t y :
+  x <> y ->
+  subst x t (Var y) = Var y.
+Proof.
+  simpl.
+  intros.
+  rewrite <- String.eqb_neq in H. rewrite H.
+  reflexivity.
+Qed.
+
+
+Lemma rename_subst : forall t t' Δ Γ v v' x x',
+  Γ |-- x ~> x' ->
+  rename Δ Γ t t' ->
+  rename [] [] v v' ->
+  rename Δ (delete x Γ) <{ [ v / x] t }> <{[ v' / x'] t'}>
+.
+Proof.
+  induction t; intros t'' Δ Γ v v' x x' H_lookup H_ren_t H_ren_v.
+  all: inversion H_ren_t; subst.
+  -  (* Let Rec *)
+    rewrite subst_unfold.
+    admit.
+  - (* NonRec nil *)
+    simpl.
+    constructor.
+    apply IHt; assumption.
+  - (* NonRec cons *)
+    admit.
+  - (* Var *)
+    destruct (string_dec x n).
+    + rename x'0 into y.
+      subst n.
+      assert (x' = y) by eauto using lookup_uniq.
+      subst x'.
+      simpl.
+      rewrite String.eqb_refl.
+      rewrite String.eqb_refl.
+      auto using rename_weaken.
+    + rewrite subst_neq; auto.
+      assert ( x' <> x'0 ). {
+        intros H. subst x'0.
+        assert (H : Term.appears_free_in x (Var n)). {
+          apply (rename_afi_rev H_ren_t H_lookup).
+          constructor.
+          }
+        inversion H; contradiction.
+      }
+      rewrite subst_neq; auto.
+      eapply rename_strengthen in H_ren_t; eauto.
+  - simpl.
+    constructor; auto.
+    apply no_captureA__subst.
+    eauto using rename_closed_l.
+  - (* LamAbs *)
+    simpl.
+    admit.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+  - simpl. eauto using rename.
+Admitted.
+
+
+
+Lemma rename_eval t t' v n:
+  rename [] [] t t' ->
+  eval t v n ->
+  exists v',
+    eval t' v' n /\ rename [] [] v v'.
+Proof.
+  intros H_ren H_eval.
+  revert t' H_ren.
+  dependent induction H_eval; intros t' H_ren.
+  - (* E_LamAbs *)
+    inversion H_ren; subst.
+    eexists.
+    split.
+    + econstructor.
+    + assumption.
+  - (* E_Apply *)
+    rename t1 into s, t2 into t, t0 into u, v0 into r.
+    rename v2 into t_v.
+    inversion H_ren; subst.
+    rename t'0 into t'.
+    specialize (IHH_eval1 _ H2) as [s'_v [ eval_s' H_ren_s_v]]. clear H2.
+    inversion H_ren_s_v; subst.
+    rename τ' into T', t'0 into u'.
+    specialize (IHH_eval2 _ H4) as [t'_v [ eval_t' H_ren_t']]. clear H4.
+
+    assert ( rename [] [] <{ [t_v / x] u }> <{ [t'_v / x'] u'}>). {
+      (* Needed to apply rename_subst *)
+      assert (H_empty : delete x [(x, x')] = []). {
+        simpl. rewrite eqb_refl. reflexivity.
+      }
+      rewrite <- H_empty at 2.
+      eapply rename_subst; auto.
+      rewrite  lookup_head.
+      reflexivity.
+    }
+
+    specialize (IHH_eval3 _ H0) as [r' [H_eval_subst H_ren_r]]. clear H0.
+    eexists.
+    split.
+    + econstructor; eauto.
+      intro H_er.
+      apply (rename_is_error H_ren_t') in H_er.
+      contradiction.
+    + eauto.
+  - (* TyAbs *)
+Admitted.

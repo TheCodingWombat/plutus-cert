@@ -21,7 +21,7 @@ Inductive AlgTerm: Type := mkTermAlg
   ; a_TyAbs    : string -> kind -> rTerm -> rTerm
   ; a_LamAbs   : string -> ty -> rTerm -> rTerm
   ; a_Apply    : rTerm -> rTerm -> rTerm
-  ; a_Constant : @some valueOf -> rTerm
+  ; a_Constant : constant -> rTerm
   ; a_Builtin  : DefaultFun -> rTerm
   ; a_TyInst   : rTerm -> ty -> rTerm
   ; a_Error    : ty -> rTerm
@@ -273,7 +273,7 @@ Section Use. (* name comes from "use" rules in attribute grammars *)
     a_TyAbs := fun (_ : string) (_ : kind) (X : a) => f [X];
     a_LamAbs := fun (_ : string) (_ : ty) (X : a) => f [X];
     a_Apply := fun X X0 : a => f [X; X0];
-    a_Constant := fun _ : @some valueOf => f [];
+    a_Constant := fun _ : constant => f [];
     a_Builtin := fun _ : DefaultFun => f [];
     a_TyInst := fun (X : a) (_ : ty) => f [X];
     a_Error := fun _ : ty => f [];
@@ -374,7 +374,7 @@ Definition con_type P Q : con_term -> Type :=
     | con_TyAbs     => forall s k (t : term), P t -> P (TyAbs s k t)
     | con_LamAbs    => forall s (t : ty) (t0 : term), P t0 -> P (LamAbs s t t0)
     | con_Apply     => forall t : term, P t -> forall t0 : term, P t0 -> P (Apply t t0)
-    | con_Constant  => forall s : @some valueOf, P (Constant s)
+    | con_Constant  => forall s : constant, P (Constant s)
     | con_Builtin   => forall d : DefaultFun, P (Builtin d)
     | con_TyInst    => forall t : term, P t -> forall t0 : ty, P (TyInst t t0)
     | con_Error     => forall t : ty, P (Error t)

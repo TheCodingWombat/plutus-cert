@@ -78,7 +78,6 @@ Proof.
   induction τ.
   all: rewrite Ty.ftv_equation.
   all: try (eauto 10 using well_scoped_Ty, weaken_well_scoped_Ty, subset_append_l, subset_append_r, subset_cons_remove, In_singleton, subset_refl).
-  - destruct s. econstructor.
 Qed.
 
 

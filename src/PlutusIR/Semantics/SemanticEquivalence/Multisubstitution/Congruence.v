@@ -397,8 +397,8 @@ Proof.
   - destruct a. eauto.
 Qed.
 
-Lemma msubstT_TyBuiltin : forall ss u,
-    msubstT ss (Ty_Builtin (Some' (TypeIn u))) = Ty_Builtin (Some' (TypeIn u)).
+Lemma msubstT_TyBuiltin : forall ss T,
+    msubstT ss (Ty_Builtin T) = Ty_Builtin T.
 Proof.
   induction ss; intros.
   - reflexivity.

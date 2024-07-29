@@ -8,8 +8,8 @@ Require Import Arith.
 
 
 
-Lemma compatibility_Constant : forall Delta Gamma u a,
-    LR_logically_approximate Delta Gamma (Constant (Some' (ValueOf u a))) (Constant (Some' (ValueOf u a))) (Ty_Builtin (Some' (TypeIn u))).
+Lemma compatibility_Constant : forall Delta Gamma T a,
+    LR_logically_approximate Delta Gamma (Constant (ValueOf T a)) (Constant (ValueOf T a)) (Ty_Builtin T).
 Proof with eauto_LR.
   intros Delta Gamma u a.
   unfold LR_logically_approximate.
@@ -29,7 +29,7 @@ Proof with eauto_LR.
   intros j Hlt__j e_f Hev__e_f.
   inversion Hev__e_f. subst.
 
-  exists (Constant (Some' (ValueOf u a))), 0.
+  exists (Constant (ValueOf u a)), 0.
   split...
 
   split...

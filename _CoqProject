@@ -142,6 +142,7 @@ src/PlutusIR/Semantics/Misc/Axiom.v
 src/Language.v
 src/Language/PIR.v
 src/Language/GHC/Core/AST.v
+src/Language/CorePIR.v
 src/Language/GHC/Core/BigStep.v
 
 src/Util/List.v

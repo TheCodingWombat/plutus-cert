@@ -177,7 +177,7 @@ Section Compatibility.
       | (TyAbs n k t), (TyAbs n' k' t')    => String.eqb n n' && Kind_eqb k k' && dec_R t t'
       | (LamAbs n T t), (LamAbs n' T' t')  => String.eqb n n'&& Ty_eqb T T' && dec_R t t'
       | (Apply s t), (Apply s' t')         => dec_R s s' && dec_R t t'
-      | (Constant v), (Constant v')        => some_valueOf_eqb v v'
+      | (Constant c), (Constant c')        => constant_eqb c c'
       | (Builtin f), (Builtin f')          => func_eqb f f'
       | (TyInst t T), (TyInst t' T')       => Ty_eqb T T' && dec_R t t'
       | (Error T), (Error T')              => Ty_eqb T T'
@@ -262,7 +262,7 @@ Section Compatibility.
       subst.
       apply C_LamAbs...
     - apply C_Apply...
-    - assert (s = s0)...
+    - assert (c = c0)...
       subst.
       apply C_Constant.
     - assert (d = d0)... subst.

@@ -183,7 +183,7 @@ refine (
 ).
 Show Existentials.
 [nil]: {
-  intros. refine (Just _); constructor.
+  intros. refine (Some _); constructor.
 }
 
 [cons]: {

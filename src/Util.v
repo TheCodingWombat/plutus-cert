@@ -109,9 +109,6 @@ Definition option_app (a b : Type): option (a -> b) -> option a -> option b :=
     | _, _ => None
     end.
 
-(* Notation "'Nothing'" := None. *)
-Notation "'Just'"    := Datatypes.Some. (* Avoid overlap with Some in AST *)
-
 Definition pure {a : Type} : a -> option a := @Datatypes.Some a.
 Definition option_alt a : option a-> option a-> option a :=
   fun x y => if x then x else y.
@@ -164,7 +161,7 @@ Definition lookup_dec {a b} (dec : forall x1 x2 : a, {x1 = x2} + {x1 <> x2}) :
   - refine (match p as x return x = p -> _ with
       | (x', y) => fun H =>
         match dec x x' with
-          | left eq => Just (existT _ y _)
+          | left eq => Some (existT _ y _)
           | right _ => _ IHps
         end
       end eq_refl
@@ -181,7 +178,7 @@ Defined.
 Definition in_dec_option (x : string) (xs : list string) : option (~(In x xs)) :=
   match in_dec string_dec x xs with
   | left _      => None
-  | right proof => Just proof
+  | right proof => Some proof
   end.
 
 Definition negneg : forall (p : Prop), p -> ~~p :=

@@ -2,6 +2,7 @@ Require Import PlutusCert.PlutusIR.
 Import ZArith.BinInt.
 Import Coq.Lists.List.
 Import Coq.Strings.String.
+Import Coq.Strings.Byte.
 Import Ascii.
 Require Import Coq.Strings.BinaryString.
 From Equations Require Import Equations.
@@ -48,12 +49,12 @@ Definition arity (df : DefaultFun) : nat :=
 
 (** ** Meanings of built-in functions *)
 
-Definition constInt (a : Z) : term := (Constant (@Some' valueOf DefaultUniInteger (ValueOf DefaultUniInteger a))).
-Definition constBool (a : bool) : term := Constant (Some' (ValueOf DefaultUniBool a)).
-Definition constBS (a : string) : term := Constant (Some' (ValueOf DefaultUniByteString a)).
+Definition constInt (a : Z) : term := (Constant (ValueOf DefaultUniInteger a)).
+Definition constBool (a : bool) : term := Constant (ValueOf DefaultUniBool a).
+Definition constBS (a : list byte) : term := Constant (ValueOf DefaultUniByteString a).
 (* Definition constChar (a : ascii) : term := Constant (Some' (ValueOf DefaultUniChar a)). *)
-Definition constString (a : string) : term := Constant (Some' (ValueOf DefaultUniString a)).
-Definition constUnit (a : unit) : term := Constant (Some' (ValueOf DefaultUniUnit a)).
+Definition constString (a : string) : term := Constant (ValueOf DefaultUniString a).
+Definition constUnit (a : unit) : term := Constant (ValueOf DefaultUniUnit a).
 
 Definition take (x : Z) (s : string) : string := substring 0 (Z.to_nat x) s.
 Definition drop (x : Z) (s : string) : string := substring (Z.to_nat x) (length s) s.
@@ -81,9 +82,9 @@ Definition compute_defaultfun (t : term) : option term :=
   | (Apply
       (Apply
         (Builtin AddInteger)
-        (Constant (@Some' _ DefaultUniInteger (ValueOf _ x)))
+        (Constant (ValueOf DefaultUniInteger x))
       )
-      (Constant (@Some' _ DefaultUniInteger (ValueOf _  y)))
+      (Constant (ValueOf DefaultUniInteger y))
     ) => Some (constInt (x + y))
 
   (** If-Then-Else *)
@@ -94,7 +95,7 @@ Definition compute_defaultfun (t : term) : option term :=
             (Builtin IfThenElse)
             T
           )
-          (Constant (@Some' _ DefaultUniBool (ValueOf _ cond)))
+          (Constant (ValueOf DefaultUniBool cond))
         )
         thenBranch
       )

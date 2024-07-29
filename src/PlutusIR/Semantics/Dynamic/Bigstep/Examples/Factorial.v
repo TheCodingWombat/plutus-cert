@@ -16,29 +16,29 @@ Definition fact_term (n : Z) : term :=
         (VarDecl
           "fact"
           (Ty_Fun
-            (Ty_Builtin (Some' (TypeIn DefaultUniInteger)))
-            (Ty_Builtin (Some' (TypeIn DefaultUniInteger)))
+            (Ty_Builtin DefaultUniInteger)
+            (Ty_Builtin DefaultUniInteger)
           )
         )
         (LamAbs
           "x"
-          (Ty_Builtin (Some' (TypeIn DefaultUniInteger)))
+          (Ty_Builtin DefaultUniInteger)
           (Apply
             (Apply
               (Apply
                 (TyInst
                   (Builtin IfThenElse)
-                  (Ty_Builtin (Some' (TypeIn DefaultUniInteger)))
+                  (Ty_Builtin DefaultUniInteger)
                 )
                 (Apply
                   (Apply
                     (Builtin EqualsInteger)
                     (Var "x")
                   )
-                  (Constant (Some' (ValueOf DefaultUniInteger 0)))
+                  (Constant (ValueOf DefaultUniInteger 0))
                 )
               )
-              (Constant (Some' (ValueOf DefaultUniInteger 1)))
+              (Constant (ValueOf DefaultUniInteger 1))
             )
             (Apply
               (Apply
@@ -52,7 +52,7 @@ Definition fact_term (n : Z) : term :=
                     (Builtin SubtractInteger)
                     (Var "x")
                   )
-                  (Constant (Some' (ValueOf DefaultUniInteger 1)))
+                  (Constant (ValueOf DefaultUniInteger 1))
                 )
               )
             )
@@ -61,7 +61,7 @@ Definition fact_term (n : Z) : term :=
     ]
     (Apply
       (Var "fact")
-      (Constant (Some' (ValueOf DefaultUniInteger n)))
+      (Constant (ValueOf DefaultUniInteger n))
     ).
 
 Ltac invert_contra := let Hcon := fresh "Hcon" in intros Hcon; inversion Hcon.
@@ -87,7 +87,7 @@ Ltac decide_neutral :=
   end.
 
 Example fact_term_evaluates : exists k,
-  fact_term 2 =[k]=> Constant (Some' (ValueOf DefaultUniInteger 2)).
+  fact_term 2 =[k]=> Constant (ValueOf DefaultUniInteger 2).
 Proof with (autounfold; simpl; eauto || (try reflexivity) || (try solve [intros Hcon; inversion Hcon])).
 (* ADMIT: Factorial should use non-strict term bindings, but we do not model them yet. *)
 Admitted.

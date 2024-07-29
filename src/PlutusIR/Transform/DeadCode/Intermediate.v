@@ -111,9 +111,9 @@ Section Bindings.
         if Ty_eqb ty ty'
           then pure (Error ty)
           else None
-    | Constant v, Constant v' =>
-        if some_valueOf_eqb v v'
-          then pure (Constant v)
+    | Constant c, Constant c' =>
+        if constant_eqb c c'
+          then pure (Constant c)
           else None
     | Builtin f, Builtin f' =>
         if func_eqb f f'

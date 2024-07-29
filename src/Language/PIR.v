@@ -8,6 +8,6 @@ Definition PIRLang : Language :=
     expr  := term
   ; bigstep := fun t t' => exists n, eval t t' n
   ; app   := Apply
-  ; const := fun i => Constant (Some' (ValueOf DefaultUniInteger i))
+  ; const := fun i => Constant (ValueOf DefaultUniInteger i)
   |}
 .

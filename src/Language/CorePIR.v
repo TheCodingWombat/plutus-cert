@@ -10,7 +10,7 @@ Require Import Utf8_core.
 Require Import Strings.String.
 
 
-Inductive ctp : Expr string -> Term -> Prop :=
+Inductive ctp : Expr string -> term -> Prop :=
   | ctp_app : ∀ s t s' t',
       ctp s s' ->
       ctp t t' ->
@@ -26,7 +26,7 @@ Inductive ctp : Expr string -> Term -> Prop :=
   | ctp_const_int : ∀ i nty ty,
       ctp
         (Lit (LitNumber nty i ty))
-        (Constant (Some' (ValueOf DefaultUniInteger i) ))
+        (Constant (ValueOf DefaultUniInteger i))
   .
 
 Notation "s ▷ t" := (ctp s t) (at level 60).

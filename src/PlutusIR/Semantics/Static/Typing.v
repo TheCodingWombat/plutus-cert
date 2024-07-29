@@ -13,11 +13,11 @@ Import Coq.Strings.String.
 Local Open Scope string_scope.
 
 (* Common built-in types *)
-Definition Ty_Int := Ty_Builtin (Some' (TypeIn DefaultUniInteger)).
-Definition Ty_Bool := Ty_Builtin (Some' (TypeIn DefaultUniBool)).
-Definition Ty_String := Ty_Builtin (Some' (TypeIn DefaultUniString)).
-Definition Ty_Unit := Ty_Builtin (Some' (TypeIn DefaultUniUnit)).
-Definition Ty_BS := Ty_Builtin (Some' (TypeIn DefaultUniByteString)).
+Definition Ty_Int := Ty_Builtin DefaultUniInteger.
+Definition Ty_Bool := Ty_Builtin DefaultUniBool.
+Definition Ty_String := Ty_Builtin DefaultUniString.
+Definition Ty_Unit := Ty_Builtin DefaultUniUnit.
+Definition Ty_BS := Ty_Builtin DefaultUniByteString.
 
 Definition Ty_BinOp t := Ty_Fun t (Ty_Fun t t).
 Definition Ty_BinPred t := Ty_Fun t (Ty_Fun t Ty_Bool).
@@ -205,8 +205,8 @@ Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty ->
       normalise (unwrapIFix Fn K Tn) T0n ->
       Δ ,, Γ |-+ (Unwrap M) : T0n
   (* Additional constructs *)
-  | T_Constant : forall Δ Γ u a,
-      Δ ,, Γ |-+ (Constant (Some' (ValueOf u a))) : (Ty_Builtin (Some' (TypeIn u)))
+  | T_Constant : forall Δ Γ T a,
+      Δ ,, Γ |-+ (Constant (ValueOf T a)) : (Ty_Builtin T)
   | T_Builtin : forall Δ Γ f T Tn,
       T = lookupBuiltinTy f ->
       normalise T Tn ->
@@ -527,5 +527,4 @@ Lemma context_has_type__apply : forall C t Δ₁ Γ₁ Δ Γ T T₁,
   (Δ₁ ,, Γ₁ |-C C : (Δ ,, Γ ▷ T) ↝ T₁) ->
   (Δ ,, Γ |-+ t : T) ->
   (Δ₁ ,, Γ₁ |-+ (context_apply C t) : T₁).
-Proof.
 Admitted.
