@@ -364,8 +364,6 @@ Admitted.
 
 (* Reducibility *)
 Fixpoint R (tm : tm) (T : tp) : Prop :=
-    DER0 tpsnil tm T /\
-    
     match T with
     | tpbas => SN0 tm
     | tpfun tp1 tp2 => 
@@ -423,43 +421,43 @@ Require Import Coq.Arith.Wf_nat.
   CONSEQUENCE: Now we need this s in the derivation, but we may also be able to use structural induction on der?
   *)
 (* NOTE: well-kindedness removed, shoult now be possible with new subst*)
-Lemma lemma10 : forall {t : tm } { T : tp},
-  subst tmsnil t t.
+Lemma lemma10 : forall {t : tm } {ts : tms} { T : tp} {G : tps},
+  DER0 G t T -> identity_sub ts -> subst ts t t.
 Proof with eauto.
-  intros t tp.
-  induction t.
-  - apply SUBnil.
-    unfold identity_sub.
-    reflexivity.
-  - apply SUBlam with (ts' := tmsnil).
-    + apply SUBSHInil.
-    + induction t. (* At some point t : Kind_Base, so induction on t will no longer give lamda case*)
-      * apply SUBnil.
-        admit. (* Yes. Easy *)
-      * admit. (* a layer deeper, at some point we cannot go deeper! *)
-      (* no clue. *) (* Hongwei Xi says it is possible. Induciton on T length?*)
-      * inversion IHt.
-        apply IHt1 in H3.
-        apply IHt2 in H5.
-        apply SUBapp; assumption.
-  - apply SUBapp; assumption.
+(* TODO: Induction on kinding length! Different idea: Cant we do induction on T instead of on the derivation? *)
+  intros t tms tp G der idsub.
+  unfold DER0 in der.
+  destruct der as [s der].
+  generalize dependent G.
+  generalize dependent tp.
+  generalize dependent tms.
+  generalize dependent t.
+  induction s; intros t tms idsub tp G der.
+  - inversion der. apply SUBnil. assumption.
+  - induction t.
+  + apply SUBnil.
+    assumption.
+  + apply SUBlam with (ts' := tms). (* not true, tms should be shifted one to obtain tms', then tms'::tmvar 0 is still identity_sub *)
+    * admit. (* not true! see above *)
+    * inversion der. (* Now we can use IHs! (if we have the correct tms')*)
+  + apply SUBapp; assumption.
 Admitted.
 
 (* TODO: No clue *)
 Lemma lemma20 :
   forall {ts ts': tms} {t t1 t' t'': tm} {G : tps} {T1 : tp} ,
-    RS0 ts G ->
+    RS0 ts G -> (* not in original, could provide ts = ts'*)
     subshi ts ts' -> 
     subst (tmsmore ts' (tmvar 0)) t t' ->
     R t1 T1 ->
     subst1 t1 t' t'' ->
-    subst (tmsmore ts t1) t t''. (* I think this should be ts'*)
+    subst (tmsmore ts t1) t t''. (* I think this should be ts', but then everything is on fire.*)
 Proof.
   intros ts ts' t t1 t' t'' G T1.
   intros rs0 subshi sub Rt1 sub1.
 
   (* By closedness of R *)
-  assert (ts' = ts) by admit.
+  assert (ts' = ts) by admit. (* TODO: R not closed anymore!*)
   subst...
   clear subshi.
   generalize dependent t.
@@ -488,6 +486,13 @@ Proof.
   (* t' has free var x. subst1 t1 t' t'' /\ R t1 T1 => no free x in t''*)
 Admitted.
 
+Lemma cr1 : forall t tp,
+  R t tp -> SN0 t.
+Proof.
+  intros t tp.
+  destruct (lemma_cr1_cr3 t tp) as [H_SN0 _].
+  assumption.
+Admitted.
 
 
 (* R is preserved by forward reduction *)
@@ -559,6 +564,7 @@ Proof.
   apply REDapp1.
   exact red.
 Admitted.
+
 
 (* R implies strongly normalizing *)
 Lemma cr1 : forall {t : tm} {tp : tp},
@@ -660,20 +666,7 @@ Lemma subst_preserves_reduction' : forall {t1 t2 t2' t3' : tm} ,
   RED0 t2 t2' -> 
   (exists t3 : tm, RED0 t3 t3' /\ subst1 t1 t2 t3). (* exists, or forall*)
 Proof.
-  intros t1 t2 t2' t3 T HsubR Hred2 t3' Hred3 Hsub.
-  (* Use subst_preserves_reduction to find the intermediate term *)
-   destruct (subst_preserves_reduction t1 t2 t3 t2' Hsub Hred2) 
-    as [t3'' [Hred_t3_t3'' Hsub_t1_t2'_t3'']].
 Admitted.
-
-(* Lemma subst_helper : ,
-  (forall t2, subst1 t f t2 -> R t2 T2) -> (RED0 f f') *)
-
-(* TODO: similar lemma for t1 --> t1' *)
-
-(* Now use this to get a fitting hypothesis for reduceFun!*)
-
-
 
 
 (* TODO: NOT USED??? *)
@@ -760,6 +753,29 @@ Lemma R_sub_removes_free_vars : forall t1 ts' t2 Ts' T0 T2,
 Proof.
 Admitted.
 
+Lemma R_shift : forall t t' T l G,
+  DER0 G t T -> tmshi t t' l -> R t T -> R t' T.
+Proof.
+  intros t t' T l G der tmshi Rt.
+  unfold DER0 in der.
+  destruct der as [der_s der].
+
+  (* generalize dependent t. *)
+  (* generalize dependent T. *)
+  generalize dependent t.
+  generalize dependent t'.
+  generalize dependent l.
+  generalize dependent T.
+  generalize dependent G.
+  
+  induction der_s; intros G T l t' t der tmshi Rt.
+  - admit.
+  - induction t.
+    + admit. (* Requires knowing that the body is strongly normalizing???*)
+    + 
+Admitted. (* Should be true, but difficult to prove? Yes: Things like R (lam t) to R t necessary *)
+
+
 Lemma mainLemma :
   forall {G : tps}  {T : tp} { ts : tms } { t t' : tm } { n : nat  },
     DER G t T n ->
@@ -775,11 +791,13 @@ Proof.
   - (* Case DERvar *)
     inversion sub.
     + subst...
-      (* From RS0 (tmsmore tmsnil (tmvar 0)) G we know G has 1 element*)
-      (* From TPI i T G we know that T in G at position i*)
-      (* So i = 0 and G = T*)
-      (* And then by RS0, we have R (tmvar i) T*)
-      admit. 
+      (* By cr4 as below, but also by:
+          length ts is length G. pos i in G, so pos i in ts.
+          ts identity_subst, so pos i in ts is (var i)
+          then by RS0 ts G we have R (var i) T (also by TPI i T G)
+      *)
+      admit. (* By cr4 I think! Since var i is normal and neutral*) 
+
     + subst...
       assert (tpslength G = tmslength ts) by admit. (* From RS0 ts G*)
       assert (tpslength G >= i + 1) by admit. (* From TPI i T G *)
@@ -790,45 +808,16 @@ Proof.
     
   - (* Case DERlam *)
     inversion sub; subst...
-    + admit. (* New SUBnil case: RS0 tmsnil G => len G = 0*)
-      (* apply SUBlam with (ts := tmsmore tmsnil (tmvar 0)) in sub. *)
-    (* contradiction in RS0 (tmsmore tmsnil (tmvar 0)) G ?, because tmvar 0 not closed*)
-      unfold RS0 in rs.
-      destruct rs as [rs_n rs].
-      inversion rs.
-      induction T; unfold R in H4; fold R in H4;
-        destruct H4 as [H4_der _];
-        inversion H4_der;
-        inversion H4;
-        inversion H7.
-      
-    + 
+     
       unfold R; fold R.
-      split.
-      *  
-        assert (ts = ts') by admit. (* by RS0 ts G, no free vars in ts, so no shifting*)
-        subst...
-        assert (DER0 (tpsmore tpsnil T1) t'0 T2).
-        {
-          apply R_sub_removes_free_vars with (t1 := t) (ts' := ts') (Ts' := G); try assumption.
-          unfold DER0.
-          exists s.
-          assumption.
-        }
-        unfold DER0.
-        unfold DER0 in H.
-        destruct H as [H_DER_s H_DER].
-        exists (S H_DER_s).
-        apply DERlam.
-        assumption.
-      *  
+      
       
 
       intros tm' Rtm'.
       subst...
       apply (@reduceFun _ _ T1 _); try assumption.
-      -- assert (ts' = ts) by admit. (* by RS0 and subshi*)
-        subst...
+      + admit. (* Body strongly normalising, kind of works*)
+        (* subst...
         
         
         assert (exists v, subst1 tm' t'0 v).
@@ -840,7 +829,7 @@ Proof.
             - unfold DER0.
               exists s.
               assumption.
-            - assumption.  
+            - admit. (* I think this is fixed by: RS0 ts => RS0 ts' where subshi ts ts'*)
 
           }
           apply subst_exists with (T2 := T2) (G := tpsmore tpsnil T1).
@@ -868,15 +857,16 @@ Proof.
           - assumption. 
         }
         destruct H1 as [H0_n H1].
+        apply appSN1 in H1.
         (* From SN (tmapp (tlam t'0) tm')
           we know that all reduction paths halt.
           One such reduction path is applying RED_lam to tmlam t'0.
           But we know that it halts, so we can only do this a finite amount of time,
           so t'0 must be halting.
         *)
-        admit.
+        admit. *)
       
-      --
+      +
       intros t2 sub1.
       specialize (IHder t2).
       pose proof (lemma20 rs H0 H2 Rtm' sub1) as sub0.
@@ -890,22 +880,11 @@ Proof.
 
   - (* Case DERapp *)
   inversion sub; subst...
-  + 
     
-    assert (subst (tmsmore tmsnil (tmvar 0)) t1 t1) as sub_1 by apply SUBneutral.
-    assert (subst (tmsmore tmsnil (tmvar 0)) t2 t2) as sub_2 by apply SUBneutral.
-
-    specialize (IHder1 t1 (tmsmore tmsnil (tmvar 0)) rs sub_1).
-    specialize (IHder2 t2 (tmsmore tmsnil (tmvar 0)) rs sub_2).
-    unfold R in IHder1; fold R in IHder1.
-    destruct IHder1 as [_ IHder1].
-    specialize (IHder1 t2 IHder2).
-    assumption.
-  +   
   specialize (IHder1 t1' ts rs H2).
   specialize (IHder2 t2' ts rs H4).
   unfold R in IHder1; fold R in IHder1.
-  destruct IHder1 as [IHder1_der IHder1].
+  
   specialize (IHder1 t2' IHder2).
   assumption.
 Admitted.
@@ -920,5 +899,5 @@ Proof.
   clear Heqder'.
   destruct der as [s der].
   pose proof (existT _ 0 RSnil) as rs0.
-  apply (mainLemma der rs0 (@lemma10 t T)).
+  apply (mainLemma der rs0 (@lemma10 t T der)).
 Qed.
