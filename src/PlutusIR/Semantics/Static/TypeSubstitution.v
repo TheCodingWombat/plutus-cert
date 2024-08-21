@@ -2,7 +2,7 @@ From Equations Require Import Equations.
 From PlutusCert Require Import PlutusIR.
 From PlutusCert Require Import Analysis.FreeVars.
 Import Ty.
-
+  
 Require Import Coq.Lists.List.
 Require Import Coq.Strings.String.
 Local Open Scope string_scope.

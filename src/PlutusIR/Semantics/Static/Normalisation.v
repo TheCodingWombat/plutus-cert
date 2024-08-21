@@ -10,6 +10,8 @@ From PlutusCert Require Import Analysis.FreeVars.
 Import Ty.
 Require Import Bool.
 
+From Autosubst Require Import Autosubst.
+
 Require Import Lia.
 
 Open Scope string_scope.
@@ -121,7 +123,7 @@ Inductive normalise : ty -> ty -> Prop :=
       normalise (Ty_App T1 T2) T
   | N_TyApp : forall T1 T2 T1n T2n,
       normalise T1 T1n ->
-      neutral_Ty T1n ->
+      neutral_Ty T1n -> (* Idea: Remove this and show SN for that? *)
       normalise T2 T2n ->
       normalise (Ty_App T1 T2) (Ty_App T1n T2n)
   | N_TyFun : forall T1 T2 T1n T2n,

@@ -10,7 +10,7 @@ From PlutusCert Require Import  Analysis.BoundVars.
 From PlutusCert Require Import  Util.
 From PlutusCert Require Import  Util.List.
 
-Set Implicit Arguments.
+(* Set Implicit Arguments. *)
 
 Module Ty.
 

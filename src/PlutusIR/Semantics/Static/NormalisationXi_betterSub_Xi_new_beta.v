@@ -318,10 +318,12 @@ Admitted.
 
 
 
-(* 
-Definition substBeta (t1 t1' t2 t3 t3' : tm) : Prop :=
-  tmshi t1 t1' 0 -> tmshi t3 t3' 0 -> subst (tmsmore tmsnil t1') t2 t3'. *)
-
+Inductive SubstBeta : tm -> tm -> tm -> tm -> tm -> Prop :=
+  | SubstBetaIntro : forall t1 t1' t2 t3 t3',
+    tmshi t1 t1' 0 -> 
+    tmshi t3 t3' 0 -> 
+    subst (tmsmore tmsnil t1') t2 t3' -> 
+    SubstBeta t1 t1' t2 t3 t3'.
 
 Inductive RED : tm -> tm -> nat -> Prop :=
   | REDlam : forall (t t' : tm) (s : nat),
@@ -338,37 +340,61 @@ Inductive RED : tm -> tm -> nat -> Prop :=
 
   | REDapp3 : forall (t v vshi t' t'shi : tm),
   (* Fixed this definition, since it was meant for beta reduction*)
-      tmshi v vshi 0 -> 
-      tmshi t' t'shi 0 ->
-      subst (tmsmore tmsnil vshi) t t'shi  -> 
+      SubstBeta v vshi t t' t'shi ->
       RED (tmapp (tmlam t) v) t' 0.
 
 Definition RED0 (t t' : tm) : Prop :=
   exists s, RED t t' s.
 
-(* 
- (\. 0 1) 3 =>(beta) 3 0
-*)
-Lemma testBetaReduct :
-  RED0 (tmapp (tmlam (tmapp (tmvar 0) (tmvar 1))) (tmvar 3)) (tmapp (tmvar 3) (tmvar 0)).
+(* Boring proof, but good to be sure.*)
+Lemma testBetaReductAll : forall t,
+  RED (tmapp (tmlam (tmapp (tmvar 0) (tmvar 1))) (tmvar 3)) t 0 -> t = (tmapp (tmvar 3) (tmvar 0)).
 Proof.
-  unfold RED0.
-  exists 0.
-  apply REDapp3 with (vshi := tmvar 4) (t'shi := tmapp (tmvar 4) (tmvar 1)).
-  + apply TMSHIvargte.
-    lia. 
-  + apply TMSHIapp.
-    - apply TMSHIvargte.
-      lia.
-    - apply TMSHIvargte.
-      lia.
-  + apply SUBapp.
-    - apply SUBvar.
-      apply TMIone.
-    - apply SUBempty.
-      simpl.
-      lia.
+  intros t Hred.
+  inversion Hred.
+  inversion H2.
+  subst...
+  inversion H3; try lia.
+  simpl in H1.
+  subst...
+  inversion H5.
+  subst...
+  inversion H7; subst...
+  { inversion H6; lia. }
+  { simpl in H6. lia. }
+  inversion H6; try lia; subst...
+  inversion H9; subst; [inversion H8| |inversion H8; inversion H13]; try lia.
+  inversion H4.
+  subst...
+  inversion H11; try lia.
+  clear H5 H2 H4.
+  assert (i = 4 - 1). (* Why doesnt lia do this...*)
+  {
+    rewrite <- H.
+    lia.
+  }
+  simpl in H2.
+  subst...
+  inversion H13; try lia.
+  assert (i= 1 - 1).
+  {
+    rewrite <- H1.
+    lia.
+  }
+  simpl in H12.
+  subst...
+  reflexivity.
 Qed.
+
+(* Validated for t = (0 1) ts = 1, t1 = arbitrary*)
+Lemma lemma20 :
+  forall {ts ts': tms} {t t1 t' t'' t1_shi t''_shi: tm} ,
+    subshi ts ts' -> 
+    subst (tmsmore ts' (tmvar 0)) t t' ->
+    SubstBeta t1 t1_shi  t' t'' t''_shi ->
+    subst (tmsmore ts t1) t t''. 
+Proof.
+Admitted.
 
 (* Implicitly says that if a term cannot reduce anymore, then it is strongly normalizing
      (possibly with more steps (n) than absolutely necessary)*)
@@ -400,7 +426,7 @@ Fixpoint R (tm : tm) (T : tp) : Prop :=
     match T with
     | tpbas => SN0 tm
     | tpfun tp1 tp2 => 
-      (forall tm', closed tm' ->  R tm' tp1 -> R (tmapp tm tm') tp2)
+      (forall tm', R tm' tp1 -> R (tmapp tm tm') tp2)
     end.
 
 (* Sequence of reducibility predicates for a substitution *)
@@ -476,58 +502,13 @@ Proof with eauto.
   + apply SUBlam with (ts' := tms). (* not true, tms should be shifted one to obtain tms', then tms'::tmvar 0 is still identity_sub *)
     * admit. (* not true! see above *)
     * inversion der. (* Now we can use IHs! (if we have the correct tms')*)
+      admit.
   + apply SUBapp; assumption.
-Admitted.
-
-(* TODO: No clue *)
-Lemma lemma20 :
-  forall {ts ts': tms} {t t1 t' t'': tm} {G : tps} {T1 : tp} ,
-    RS0 ts G -> (* not in original, could provide ts = ts'*)
-    subshi ts ts' -> 
-    subst (tmsmore ts' (tmvar 0)) t t' ->
-    R t1 T1 ->
-    subst1 t1 t' t'' ->
-    subst (tmsmore ts t1) t t''. (* I think this should be ts', but then everything is on fire.*)
-Proof.
-  intros ts ts' t t1 t' t'' G T1.
-  intros rs0 subshi sub Rt1 sub1.
-
-  (* By closedness of R *)
-  assert (ts' = ts) by admit. (* TODO: R not closed anymore!*)
-  subst...
-  clear subshi.
-  generalize dependent t.
-  generalize dependent t''.
-  induction t'.
-  (* t = t'*)
-  - admit. (* straightforward*)
-  - intros t'' sub1 t sub.
-    apply IHt'.
-  (* assert (exists t''', t'' = tmlam t''')   by admit. *)
-  (* destruct H as [t''' H]. *)
-  subst...
-  apply SUBlam with (ts' :=  (tmsmore ts t1) ).
-  + admit.
-  + 
-
-
-  (* Since verything that gets substituted does not interfere with each other, this should hold*)
-  (* Suppose ts = t2
-
-    Then we are actually asking: subst t2, and then t1 <=> subst t1 and then t2. Since t2 and t1 closed, yes.
-
-  *)
-  
-  (* Idea: subshi ts ts' /\ RS0 ts G => ts = ts'*)
-  (* t' has free var x. subst1 t1 t' t'' /\ R t1 T1 => no free x in t''*)
 Admitted.
 
 Lemma cr1 : forall t tp,
   R t tp -> SN0 t.
 Proof.
-  intros t tp.
-  destruct (lemma_cr1_cr3 t tp) as [H_SN0 _].
-  assumption.
 Admitted.
 
 
@@ -535,6 +516,7 @@ Admitted.
 Lemma cr2 : forall {t t' : tm}  {tp : tp },
   R t tp -> RED0 t t' -> R t' tp.
 Proof.
+Admitted.
   (* intros t t' T n r rd.
   generalize dependent t'.
   generalize dependent t.
@@ -584,46 +566,18 @@ Proof.
       exists (s + 1).
       apply RED_app1.
       assumption. *)
-Admitted.
+
 
 (* TODO: Ooo we need this in other places! *)
 Lemma appSN1 : forall t1 t2 n,
   SN (tmapp t1 t2) n ->
   SN0 t1.
 Proof.
-  intros t1 t2 n sn.
-  destruct sn as [fsn].
-  apply backwardSN.
-  intros t1' red.
-  apply appSN1 with (t2 := t2) (n := n).
-  apply fsn.
-  apply REDapp1.
-  exact red.
+  
 Admitted.
 
 
-(* R implies strongly normalizing *)
-Lemma cr1 : forall {t : tm} {tp : tp},
-    R t tp -> SN0 t.
-Proof.
-    intros t tp HR.
-    generalize dependent t.
-    induction tp.
-    
-    - intros t Rt.
-      destruct Rt as [_ Rt].
-      assumption.
-    - intros t Rt. 
-    (* unfold R in Rt; fold R in Rt.
-    destruct Rt as [_ Rt]. *)
-    induction t.
 
-
-    
-    
-      
-      
-Admitted. 
 
 Lemma cr3a : forall {t t1 : tm} {tp1 tp2 : tp } {m : nat},
   NEU t ->
@@ -679,36 +633,138 @@ Proof.
       apply (cr3a neu Rt1 sn H). *)
 Admitted. 
 
-(* Proof in Barendreght: The Lambda Calculus, 2.1.17 *)
-Lemma subst_preserves_reduction : forall t1 t2 t3 t2',
-  subst1 t1 t2 t3 ->
+(* Inverse of proof in Barendreght: The Lambda Calculus, 2.1.17? *)
+Lemma subst_helper : forall {t1 t2' t3' t2} ,
+  subst t1 t2' t3' ->
   RED0 t2 t2' ->
-  exists t3', RED0 t3 t3' /\ subst1 t1 t2' t3'.
+  exists t3, (subst t1 t2 t3 /\ RED0 t3 t3').
 Proof.
 Admitted.
 
-(* Should follow by inverse logic of the above and confluence
-    Possibly we don't even need the confluence *)
-  (* I think we don't need confluence:
-  Here (https://proofassistants.stackexchange.com/questions/4206/stlc-substitution-behaviour-with-lambda-body-normalisation?noredirect=1#comment8219_4206)
-    I created a counter example for the deterministic semantics, but our statement is now
-      about non-determenistic, and we only need to find one t3 that steps.
-  Also in the above lemma Barendreght proved we don't need confluence, and this is just reverse? Makes sense to me*)
-
-  (* In the forall case we do need confluence I think*)
-Lemma subst_preserves_reduction' : forall {t1 t2 t2' t3' : tm} ,
-  subst1 t1 t2' t3'
-  ->
-  RED0 t2 t2' -> 
-  (exists t3 : tm, RED0 t3 t3' /\ subst1 t1 t2 t3). (* exists, or forall*)
+(* makes sense? *)
+Lemma shift_helper2 : forall t1 t2 t3 t1' t2' t3', 
+  tmshi t1 t1' 0 ->
+  tmshi t2 t2' 1 ->
+  tmshi t3 t3' 0 ->
+  subst (tmsmore tmsnil t1') t2' t3' ->
+  subst (tmsmore tmsnil t1) t2 t3.
 Proof.
+  (* tmshi t2 t2' 1, so 0 remains 0. So in t2', 0 gets replaced by t1', 
+      and in t2, 0 gets replaced by t1
+    it should just be true ok.
+  *)
+Admitted.
+
+(* So much machinery, aaa
+*)
+Lemma shift_unique : forall { t1 t2 t3 l} ,
+  tmshi t1 t3 l ->
+  tmshi t2 t3 l ->
+  t1 = t2.
+Proof.
+Admitted.
+
+Lemma shift_helper : forall t1 t2 t1_shi t2_shi l, 
+  tmshi t1 t1_shi l -> 
+  tmshi t2 t2_shi l ->
+  RED0 t1_shi t2_shi ->
+  RED0 t1 t2.
+Proof.
+  intros t1 t2 t1_shi t2_shi l tmshit1 tmshit2 redt1shi.
+  unfold RED0.
+  unfold RED0 in redt1shi.
+  destruct redt1shi as [s redt1shi].
+  exists s.
+  generalize dependent l.
+  generalize dependent t1.
+  generalize dependent t2.
+  generalize dependent t1_shi.
+  generalize dependent t2_shi.
+  induction s; intros t2_shi t1_shi redt1shi t2 t1 l tmshit1 tmshit2.
+  - (* Since I generalized this to l this doesnt work anymore. But it does work for
+      tmshi t1 t1_shi 0... We need a sort of alpha equivalence I think.*)
+    inversion redt1shi.
+    subst...
+    
+    inversion tmshit1; subst...
+    inversion H3; subst...
+    apply REDapp3 with (vshi := v) (t'shi := t2_shi).
+    subst...
+    apply SubstBetaIntro.
+    + assumption. admit.
+    + assumption. admit.
+    + inversion H3.
+      subst...
+      destruct H.
+      apply shift_helper2 with (t1':= t1') (t2' := t0) (t3' := t3'); try assumption.
+      admit.
+    + admit. + admit. 
+  - inversion redt1shi; subst...
+    + inversion tmshit2; subst...
+      inversion tmshit2; subst...
+      inversion tmshit1; subst...
+      inversion tmshit1; subst...
+      apply REDlam.
+      specialize (IHs t' t H2 t0 t2 (S l) H4 H1).
+      assumption.
+    + inversion tmshit2; subst...
+      inversion tmshit1; subst...
+      specialize (IHs t1' t0 H2 t4 t2 l H4 H3).
+      pose proof (shift_unique H5 H7).
+      subst...
+      apply REDapp1.
+      assumption.
+    + (* analogous*)
+Admitted.
+
+Lemma beta_reduction_helper : forall {t1 t1_shi t2' t3' t3_shi' t2} ,
+  SubstBeta t1 t1_shi t2' t3' t3_shi' ->
+  RED0 t2 t2' ->
+  exists t3 t3_shi, (SubstBeta t1 t1_shi t2 t3 t3_shi /\ (RED0 t3 t3' \/ t3 = t3')).
+Proof.
+  intros t1 t1_shi t2' t3' t3_shi' t2 subBetat2' redt2.
+  apply REDapp3 in subBetat2'.
+    
+
+
+(* Is this even true? Don't we need a confluent argument?*)
+(* Not smart enough to do the induction ;)*)
+(* This fact is programmed right into the HOAS reduction definition it seems
+    there if tmlam t2 --> tmlam t2' iff forall t1, SubstBeta t1 _ t2 --> SubstBeta t1 _ t2'*)
+Lemma beta_reduction_helper : forall {t1 t1_shi t2' t3' t3_shi' t2} ,
+  SubstBeta t1 t1_shi t2' t3' t3_shi' ->
+  RED0 t2 t2' ->
+  exists t3 t3_shi, (SubstBeta t1 t1_shi t2 t3 t3_shi /\ (RED0 t3 t3' \/ t3 = t3')).
+Proof.
+  intros t1 t1_shi t2' t3' t3_shi' t2 substbeta red.
+  apply REDapp3 in substbeta as prrr.
+  assert (RED0 (tmapp (tmlam t2) t1) t3') by admit.
+  inversion H. (* How to continue frmo here? *)
+    
+  inversion substbeta.
+  subst...
+  pose proof (subst_helper H1 red) as existsT3.
+  destruct existsT3 as [t3_shi_found [t3sub t3red]].
+  assert (exists t3, tmshi t3 t3_shi_found 0) as [t3_found tmshi_t3] by admit.
+    (* Only true if t3_shi_found does not contain 0
+        Proof:
+          by t3sub : subst (tmsmore tmsnil t1_shi) t2 t3_shi_found
+          we know 0 in t2 is replaced by t1_shi to obtain t3_shi
+          So if t1_shi does not contain 0, then done.
+          But tmshi t1 t1_shi, so all 0 in t1 becomes 1 in t1_shi.
+      *)
+  exists t3_found.
+  exists t3_shi_found.
+  split.
+  - apply SubstBetaIntro; assumption.
+  (* - apply shift_helper. *) - admit.
 Admitted.
 
 
 (* TODO: NOT USED??? *)
 (* \. f  t --> subst t f t', where t' is the new term*)
-Lemma lamSN : forall (t1 t2 t3: tm) (n : nat),
-  subst1 t1 t2 t3 -> SN t3 n -> SN t2 n.
+Lemma lamSN : forall (t f t2 t_shi t2_shi : tm) (n : nat),
+    SubstBeta t t_shi f t2 t2_shi -> SN t2 n -> SN f n.
 Proof.
 (* We know that t3 normalizes in at most n steps
     Suppose t2 steps to t2', then by subst_preserves_reduction
@@ -717,20 +773,19 @@ Proof.
     then we do it again, but at some point we get subst1 t1 t2 t3 -> SN t3 0 -> SN t2 0
     Proof by contradiction: Again, we suppose t2 --> t2', but it cant, because then t3 must step somewhere, and it cant.
     So t2 cannot reduce, so it is a value, so SN t2 0. (since the implication condition is trivially true now)
-
 *)
 Admitted.
 
 (* Ask Jacco: Classical reasoning? (law of excluded middle)*)
 Lemma reduceFun : forall {f t : tm} { T1 T2 : tp},
-    SN0 f -> (* TODO: How do we get this SN f n?*)
+    
     R t T1 ->
-     (forall (t2 : tm),
-        subst1 t f t2 -> R t2 T2) ->
+     (forall (t_shi t2 t2_shi : tm),
+        SubstBeta t t_shi f t2 t2_shi -> R t2 T2) ->
      R (tmapp (tmlam f) t) T2.
 Proof.
-  (* Insight: f should have only one free variable again*)
-  intros f t T1 T2 SN0f RT1 RH.
+  intros f t T1 T2 RT1 RH.
+  assert (SN0 f) as SN0f by admit. (* No clue, how to get this t2? Basically we have to show existence of t2 s.t. SubstBeta t t_shi f t2 t2_shi*)
   destruct SN0f as [f_n SNf].
   apply cr1 in RT1.
   unfold SN0 in RT1.
@@ -742,7 +797,7 @@ Proof.
   generalize dependent f_n.
   induction n as [|k IH].
   - (* f_n = t_n = 0, so only reduction possible is beta reduction *) 
-    intros f_n t_n n t SN_t f SN_f RH.
+    intros f_n t_n n t SN_t f RH SN_f.
     assert (f_n = 0) by lia.
     assert (t_n = 0) by lia.
     apply cr3.
@@ -751,10 +806,10 @@ Proof.
       inversion red.
       inversion H1.
       * admit. (* NOT POSSIBLE BY f_n = 0.*) 
-      * admit.
-      * specialize (RH t' H6).
+      * admit. (* idem t_n *)
+      * specialize (RH vshi t' t'shi H6).
         assumption.
-  - intros f_n t_n n t SN_t f SN_f RH.
+  - intros f_n t_n n t SN_t f RH SN_f.
     apply cr3.
     + apply NEUapp.
     + intros t' red_ft.
@@ -762,24 +817,27 @@ Proof.
       inversion red_ft'.
       * assert (f_n' := t_n - 1). 
         inversion H3.
-        assert (SN t'0 f_n') as SN_f' by admit. (* step preserves SN*)
+        rename t'0 into f'.
+        assert (SN f' f_n') as SN_f' by admit. (* step preserves SN*)
         assert (k = f_n' + t_n) by admit. (* arithmetic stuff.*)
-        specialize (IH f_n' t_n H8 t SN_t t'0 SN_f').
-        assert (forall t2, subst1 t t'0 t2 -> R t2 T2).
-        {
-          intros t3 Hsub.
-          destruct (@subst_preserves_reduction' _ f _ _ Hsub).
-          - unfold RED0.
-            exists s0.
-            assumption.
-          - destruct H9 as [H9_red H9_sub].
-            specialize (RH x H9_sub).
-            apply (cr2 RH H9_red).
-        }
-        specialize (IH H9).
+        specialize (IH f_n' t_n H8 t SN_t f').
+        (* assert (forall t_shi t2 t2_shi, SubstBeta t t_shi t'0 t2 t2_shi -> R t2 T2) as RH'.
+        { (* Maybe with new SubstBeta definition we don't need subst_preserves_reduciton' (maybe it is not even true!)*)
+          intros t_shi t3 t2_shi subt'0.
+          assert (RED0 f t'0) as redf_t'0 by admit.
+          pose proof (beta_reduction_helper subt'0 redf_t'0) as substf.
+          destruct substf as [t2f [t2f_shi [substf redt2]]].
+          specialize (RH t_shi t2f t2f_shi substf).
+          
+          pose proof (cr2 RH redt2).
+          assumption.
+
+        } *)
+        specialize (IH RH' SN_f').
         assumption.
-      * admit. (* TODO: Analogous to above, implement once above sublemmas are verified*)
-      * specialize (RH t' H3).
+        admit. 
+      *  admit. (* TODO: Analogous to above, implement once above sublemmas are verified*)
+      * specialize (RH vshi t' t'shi H3).
         assumption.  
 Admitted.
 
@@ -790,33 +848,10 @@ Lemma R_sub_removes_free_vars : forall t1 ts' t2 Ts' T0 T2,
 Proof.
 Admitted.
 
-Lemma R_shift : forall t t' T l G,
-  DER0 G t T -> tmshi t t' l -> R t T -> R t' T.
-Proof.
-  intros t t' T l G der tmshi Rt.
-  unfold DER0 in der.
-  destruct der as [der_s der].
-
-  (* generalize dependent t. *)
-  (* generalize dependent T. *)
-  generalize dependent t.
-  generalize dependent t'.
-  generalize dependent l.
-  generalize dependent T.
-  generalize dependent G.
-  
-  induction der_s; intros G T l t' t der tmshi Rt.
-  - admit.
-  - induction t.
-    + admit. (* Requires knowing that the body is strongly normalizing???*)
-    + 
-Admitted. (* Should be true, but difficult to prove? Yes: Things like R (lam t) to R t necessary *)
-
-
 Lemma mainLemma :
   forall {G : tps}  {T : tp} { ts : tms } { t t' : tm } { n : nat  },
     DER G t T n ->
-    RS0_closed ts G ->
+    RS0 ts G ->
     subst ts t t' ->
     R t' T.
 Proof.
@@ -842,7 +877,7 @@ Proof.
       lia.
     + apply (mainLemmaVar H H2).
       assumption.
-      admit.
+      
     
   - (* Case DERlam *)
     inversion sub; subst...
@@ -854,7 +889,9 @@ Proof.
       intros tm' Rtm'.
       subst...
       apply (@reduceFun _ _ T1 _); try assumption.
-      + admit. (* Body strongly normalising, kind of works*)
+      
+      
+         (* Body strongly normalising, kind of works*)
         (* subst...
         
         
@@ -904,10 +941,10 @@ Proof.
         *)
         admit. *)
       
-      +
-      intros t2 sub1.
+       
+      intros t_shi t2 t'0' t2_shi sub1.
       specialize (IHder t2).
-      pose proof (lemma20 rs H0 H2 Rtm' sub1) as sub0.
+      pose proof (lemma20 H0 H2 sub1) as sub0.
       specialize (IHder (tmsmore ts tm')).
       destruct rs as [n rs_pred].
       pose proof (RSmore rs_pred Rtm').
@@ -922,15 +959,8 @@ Proof.
     
   specialize (IHder1 t1' ts rs H2).
   specialize (IHder2 t2' ts rs H4).
-  destruct rs as [rs_n rs ts_closed].
+  destruct rs as [rs_n rs].
   unfold R in IHder1; fold R in IHder1.
-  (* Now the hard part, showing t2' is closed
-    By ts_closed, everything in ts is closed. By der2, t2 only contains free vars in G
-    By RS ts G, ts matches with G,
-    So subst ts t2 t2' replaces all free vars in t2 with a closed term from ts
-    So t2' is closed
-    Then by IH we are done.
-  *)
   
   specialize (IHder1 t2' IHder2).
   assumption.
@@ -941,10 +971,16 @@ Lemma reduce : forall (t : tm) (T : tp),
   DER0 tpsnil t T -> R t T.
 Proof.
   intros t T der.
-  unfold DER0 in der.
   remember der as der'.
+  unfold DER0 in der.
+  
   clear Heqder'.
   destruct der as [s der].
   pose proof (existT _ 0 RSnil) as rs0.
-  apply (mainLemma der rs0 (@lemma10 t T der)).
+  assert (identity_sub tmsnil) as tmsnil_identity.
+  {
+    unfold identity_sub.
+    reflexivity.
+  }
+  apply (mainLemma der rs0 (@lemma10 t tmsnil T tpsnil der' tmsnil_identity)).
 Qed.

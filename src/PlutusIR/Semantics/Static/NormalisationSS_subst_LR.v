@@ -13,7 +13,7 @@ Require Import PlutusCert.Util.List.
 Require Import PlutusCert.PlutusIR.Semantics.Static.Theorems.Weakening.
 
 Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.SubstituteTCA.
-
+Require Import Coq.Program.Equality.
 Require Import Lia.
 
 Open Scope string_scope.
@@ -82,16 +82,16 @@ Inductive step : ty -> ty -> Prop :=
       ty1 --> ty1' ->
       <{(\x:K2, ty1)}> --> <{(\x:K2, ty1')}>
   | ST_AppAbs : forall x K2 v1 v2,
-         (* value v2 -> *)
-         (* value (Ty_Lam x K2 v1) -> Toegevoegd: Needed for determinism *)
+         value v1 -> (* Toegevoegd: Needed for determinism *)
+         value v2 -> 
          <{(\x:K2, v1) v2}> --> <{ [x:=v2]v1 }>
   | ST_App1 : forall ty1 ty1' ty2,
          ty1 --> ty1' ->
          <{ty1 ty2}> --> <{ty1' ty2}>
-  | ST_App2 : forall ty1 ty2 ty2',
-         (* value v1 -> *)
+  | ST_App2 : forall v1 ty2 ty2',
+         value v1 ->
          ty2 --> ty2' ->
-         <{ty1 ty2}> --> <{ty1 ty2'}>
+         <{v1 ty2}> --> <{v1 ty2'}>
 
 where "ty '-->' ty'" := (step ty ty').
 
@@ -143,32 +143,71 @@ Proof with eauto.
   inversion Hstep.  *)
 Admitted.
 
-(* Shouldnt be for all K, only for the K matching T*)
-Lemma confluence_helper : forall y t1 t1' t2,
-  t1 --> t1' -> substituteTCA y t2 t1 -->* substituteTCA y t2 t1'.
-Proof.
-  intros y t1 t1' t2 IHt1step.
-  induction IHt1step.
-  - admit. (* lam reduction, should be doable, casing on X=?x*)
-  - admit. (* Uhm, I don't know how renaming works *) 
-  - admit. (* Should be easy by applying subst on TyApp*)
-  - admit. (* Same *)
+
+(* ----------------------------------------------------------------- *)
+(** *** Determinism *)
+
+(** To prove determinsm, we introduce a helpful tactic.  It identifies
+    cases in which a value takes a step and solves them by using
+    value__normal.  *)
+
+Ltac solve_by_inverts n :=
+  match goal with | H : ?T |- _ =>
+  match type of T with Prop =>
+    solve [
+      inversion H;
+      match n with S (S (?n')) => subst; solve_by_inverts (S n') end ]
+  end end.
+
+Ltac solve_by_invert :=
+  solve_by_inverts 1.
+
+Ltac solve_by_value_nf :=
+  match goal with | H : value ?v, H' : ?v --> ?v' |- _ =>
+  exfalso; apply value__normal in H; eauto
+  end.
+
+Definition deterministic {X : Type} (R : relation X) :=
+  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
+
+Lemma step_deterministic :
+   deterministic step.
+Proof with eauto.
+   unfold deterministic.
+   intros t t' t'' E1 E2.
+   generalize dependent t''.
+   induction E1; intros t'' E2; inversion E2; subst; clear E2;
+   try solve_by_invert; try f_equal; try solve_by_value_nf; eauto.
+   - inversion H4. 
+     apply value__normal in H.
+    (* \x:K2. v1 is a value, so it is normal, so by value__normal, not (exists ty1'0 s.t. it steps there, which contradicts H6)*) 
 Admitted.
 
-Theorem confluence : forall x y y' z : ty,
-  x --> y -> x --> y' -> exists z, y -->* z /\ y' --> z.
+(* TODO: name in literature? *)
+Lemma step_linear : forall t t' v, 
+  (t --> t') -> t -->* v -> value v -> t' -->* v.
+Proof.
+  intros t t' v Hstep Hmultistep Hvalue.
+  inversion Hmultistep; subst; eauto.
+  - admit. (* Discriminate on value v, but still step*)
+  - admit. (* step_deterministic => y = t'. then by H0: y = t' -->* v, done*)
+Admitted.
+
+(* TODO: Name in literature*)
+Lemma step_halting_value_unique : forall t v v',
+  t -->* v -> t -->* v' -> value v -> value v' -> v = v'.
 Proof.
 Admitted.
 
 (* ----------------------------------------------------------------- *)
 (** *** Preservation *)
 
-Theorem preservation : forall t t' T,
-   [] |-* t : T  ->
+Theorem step_preserves_kinding : forall t t' K Gamma,
+   Gamma |-* t : K  ->
    t --> t'  ->
-   [] |-* t' : T.
+   Gamma |-* t' : K.
 Proof with eauto.
-(* intros t t' T HT. generalize dependent t'.
+(* intros t t' K Gamma HT. generalize dependent t'.
 (* remember [] as Gamma. *)
 induction HT; intros t' HE; subst; inversion HE; subst... 
 - apply K_Lam.
@@ -213,11 +252,11 @@ Hint Constructors appears_free_in : core.
 Definition closed (t:ty) :=
   forall x, ~ appears_free_in x t.
 
-Lemma context_invariance : forall Gamma Gamma' t K,
+(* Lemma context_invariance : forall Gamma Gamma' t K,
      Gamma |-* t : K  ->
      (forall x, appears_free_in x t -> List.lookup x Gamma = List.lookup x Gamma')  ->
      Gamma' |-* t : K.
-Proof.
+Proof. *)
   (* intros.
   generalize dependent Gamma'.
   induction H; intros; eauto 12.
@@ -246,7 +285,7 @@ Proof.
       auto.
     + apply IHhas_kind2. intros x1 Hafi.
       auto.  *)
-Admitted.
+(* Admitted. *)
 
 (* A handy consequence of [eqb_neq]. *)
 Theorem false_eqb_string : forall x y : string,
@@ -277,43 +316,6 @@ Proof.
   discriminate C.  
 Qed.
 
-(* ----------------------------------------------------------------- *)
-(** *** Determinism *)
-
-(** To prove determinsm, we introduce a helpful tactic.  It identifies
-    cases in which a value takes a step and solves them by using
-    value__normal.  *)
-
-Ltac solve_by_inverts n :=
-  match goal with | H : ?T |- _ =>
-  match type of T with Prop =>
-    solve [
-      inversion H;
-      match n with S (S (?n')) => subst; solve_by_inverts (S n') end ]
-  end end.
-
-Ltac solve_by_invert :=
-  solve_by_inverts 1.
-
-Ltac solve_by_value_nf :=
-  match goal with | H : value ?v, H' : ?v --> ?v' |- _ =>
-  exfalso; apply value__normal in H; eauto
-  end.
-
-Definition deterministic {X : Type} (R : relation X) :=
-  forall x y1 y2 : X, R x y1 -> R x y2 -> y1 = y2.
-(* 
-Lemma step_deterministic :
-   deterministic step.
-Proof with eauto.
-   unfold deterministic.
-   intros t t' t'' E1 E2.
-   generalize dependent t''.
-   (* induction E1; intros t'' E2; inversion E2; subst; clear E2. *)
-   induction E1; intros t'' E2; inversion E2; subst; clear E2;
-   try solve_by_invert; try f_equal; try solve_by_value_nf; eauto.   
-Qed. *)
-
 
 Definition halts  (t:ty) : Prop :=  exists t', t -->* t' /\  value t'.
 
@@ -327,22 +329,43 @@ Proof.
   - assumption.
 Qed.
 
-Fixpoint R (T:kind) (t : ty) : Prop :=
-  ([] |-* t : T /\ halts t /\ 
-  (match T with
+
+
+
+
+
+(* Define a measure for the lexicographic ordering *)
+Definition my_measure (p: ty) : nat :=
+  size p.
+
+
+(* CANNOT GUESS DECREASING ARGUMENT *)
+Program Fixpoint R' (Gamma : list (binderTyname * kind)) (t : ty) (K: kind) {measure (my_measure t)} : Prop :=
+  Gamma |-* t : K /\ (exists v, t -->* v /\ value v /\ 
+    (forall (X: binderTyname) (Kx: kind), In (X, Kx) Gamma -> 
+      forall v_s, 
+        (* drop X Gamma |-* v_s : Kx -> (ALready implied by the R' condition*)
+        value v_s ->
+        R' (drop X Gamma) v_s Kx ->
+        R' (drop X Gamma) (substituteTCA X v_s v) K) 
+    /\
+  (match K with
    | <{ * }>  => True
-   | <{ K1 -> K2 }> => (forall s : ty, R K1 s -> R K2 <{t s}> )
+   | <{ K1 -> K2 }> => (forall s : ty, R' Gamma s K1 -> R' Gamma <{t s}> K2 )
    end)).
+Admit Obligations.
+
+
 
 (** As immediate consequences of this definition, we have that every
     element of every set [R_T] halts in a value and is closed with type
     [T] :*)
 
-Lemma R_halts : forall {T} {t}, R T t -> halts t.
+Lemma R'_halts : forall {K} {t} {Gamma}, R' Gamma t K -> halts t.
 Proof.
-  (* intros.
-  destruct T; unfold R in H; destruct H as [v [H [Hhalts _]]]; 
-  unfold halts; exists v; assumption. *)
+  intros.
+  unfold R' in H.
+  unfold halts; exists v; assumption.
 Admitted.
 
 Lemma R_types : forall K T,
@@ -407,7 +430,7 @@ Admitted.
 
 Lemma step_preserves_R : forall T t t', (t --> t') -> R T t -> R T t'.
 Proof.
- induction T;  intros t t' E Rt; unfold R; fold R; unfold R in Rt; fold R in Rt;
+ (* induction T;  intros t t' E Rt; unfold R; fold R; unfold R in Rt; fold R in Rt;
                destruct Rt as [typable_empty_t [HKind [halts_t RRt]]]; exists typable_empty_t.
   (* Bool *)
   - split. eapply preservation; eauto.
@@ -419,7 +442,7 @@ Proof.
     split; eauto. (* TODO: Understand why we don't have todo the forall R s -> R (v s), it seems to already be in the assumptions*)
     destruct halts_t.
     split; eauto.
-    apply (multistep_goes_through_step t); assumption.
+    apply (multistep_goes_through_step t); assumption. *)
 Admitted.
 
 
