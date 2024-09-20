@@ -32,10 +32,16 @@ Fixpoint multiSubstituteT (sigma : list (string * term)) (T : term) : term :=
     tmapp (multiSubstituteT sigma T1) (multiSubstituteT sigma T2)
   end.
 
-(* Notation for substitution *)
-Notation "'[' x ':=' s ']' t" := (multiSubstituteT [(x, s)] t) (at level 20).
+Fixpoint msubst (sigma : list (string * term)) (T : term) : term :=
+  match sigma with
+  | [] => T
+  | (x, s) :: sigma' => substituteT x s (msubst sigma' T)
+  end.
 
-Notation "sigma [[ t ]]" := (multiSubstituteT sigma t) (at level 20).
+(* Notation for substitution *)
+Notation "'[' x ':=' s ']' t" := (msubst [(x, s)] t) (at level 20).
+
+Notation "sigma [[ t ]]" := (msubst sigma t) (at level 20).
 
 (** **** One-Step Reduction *)
 
@@ -242,11 +248,31 @@ Proof with eauto using L_sn.
     intros HlookupGamma sigma HEL.
     unfold EL in HEL.
     specialize (HEL X A HlookupGamma).
-    unfold multiSubstituteT.
     destruct HEL as [t [HlookupSigma LAt] ].
-    rewrite HlookupSigma.
-    assumption.
+    (* rewrite HlookupSigma. *)
+    (* assumption. *)
+    admit.
   - move=> t h.
+    (* Moving sigma under lambda yields:
+    tmapp (tmlam X' A ((drop X sigma) [[rename X X' s]])) t
+    
+    which is equal to:
+    [X' := t] ((drop X sigma) [[rename X X' s]])
+
+    which is equal to (by msubst starting from the right):
+    ((X', t)::(drop X sigma)) [[rename X X' s]]
+
+    Which is the goal.
+
+    While our hypothesis says something about
+    (X, t)::sigma [[s]]
+
+    But, if X in sigma, then we can't just drop X 
+    from sigma, since a substitution might reintroduce it.
+
+
+    *)
+    unfold msubst. 
     apply: beta_expansion...
     
     fold multiSubstituteT.
