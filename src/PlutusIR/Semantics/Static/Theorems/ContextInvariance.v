@@ -117,6 +117,35 @@ Module Typing.
       + apply eqb_neq in Heqb.
         rewrite lookup_neq; auto.
         rewrite lookup_neq; auto.
+    - (* Ty_Forall *)
+      econstructor; auto.
+      (* Suppose X in Γ_ftv of Gamma', then it must be in one of its values, say val1
+        val1 has a corresponding key, say "x"
+        Then by H2, we know lookup x Γ = lookup x Γ'
+
+        We just found val1 = lookup x Γ'
+        So lookup x Γ = val1.
+
+        So X in ftv val1. So X in Γ_ftv Γ.
+
+        Contradiction.
+      *)
+      admit.
+    - (* Ty_Forall_ren*)
+      econstructor; auto.
+      + admit.
+      + unfold P_has_type in H3.
+        specialize (H3 Gamma').
+        eapply H3.
+        (* Term.appears_free_in x (TyAbs X K t) is a superset of
+          Term.appears_free_in x (rename_ty X X' t) ?
+
+          what about X', what if that appears free in TyAbs X K t? It cannot by X' not in tv t
+          also X is not free in TyAbs X K t, so it does not matter that we rename it away.
+        *)
+        intros.
+        admit.
+
     - (* T_Let *)
       subst.
       eapply T_Let...
@@ -157,6 +186,6 @@ Module Typing.
         eapply In__map_normalise in i...
         apply In__lookup_append...
       + apply lookup_append_cong...
-  Qed.
+  Admitted.
 
 End Typing.

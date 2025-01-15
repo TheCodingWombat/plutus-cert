@@ -359,6 +359,8 @@ Proof with (eauto_LR || eauto with DSP_compatibility_lemmas).
   all : intros; autounfold; intros; subst.
   all: try solve [ inv_CNR; eauto with DSP_compatibility_lemmas typing].
   all : try solve [eauto with typing].
+  - (* T_TyAbs *)
+    admit.
   - (* T_Let *)
     inv_CNR...
     + eapply H3...
@@ -482,7 +484,7 @@ Proof with (eauto_LR || eauto with DSP_compatibility_lemmas).
     split. all: intros. all: subst.
     + inv_Compat...
     + inv_CNR...
-Qed.
+Admitted.
 
 
 From PlutusCert Require Import Contextual.

@@ -268,6 +268,9 @@ Proof with eauto.
       eapply T_Var...
       simpl in H3.
       rewrite Heqb in H3...
+  - (* TyForall *)
+    inversion H0. subst.
+    admit. admit.
   - (* LamAbs *)
     inversion H0. subst.
     simpl.

@@ -92,6 +92,7 @@ Module Term.
       inversion Hafi. subst.
       eapply H2 in H8...
       rewrite lookup_neq in H8...
+    - admit.
     - (* T_Let *)
       inversion Hafi.
       + subst.
@@ -121,7 +122,7 @@ Module Term.
         apply notIn_bvb_bindsG in H7.
         eapply notIn__map_normalise in H7...
         erewrite <- notIn__lookup_append...
-Qed.
+Admitted.
 
 End Term.
 
@@ -176,11 +177,9 @@ Module Annotation.
     all: intros; autounfold.
     all: try (intros x0 Hafi).
     all: try solve [inversion Hafi; subst; eauto using Ty.free_in_context].
+    - admit. 
     - (* T_TyAbs *)
-      inversion Hafi.
-      subst.
-      eapply H0 in H5...
-      rewrite lookup_neq in H5...
+      admit.
     - (* T_Let*)
       inversion Hafi.
       + subst.
@@ -217,7 +216,7 @@ Module Annotation.
       destruct H7 as [c [HIn__c Hafi__c]].
       erewrite <- notIn__lookup_append...
       eapply H1...
-  Qed.
+  Admitted.
 
 End Annotation.
 

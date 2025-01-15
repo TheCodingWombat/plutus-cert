@@ -61,6 +61,8 @@ Proof with eauto.
 
   all : autounfold; intros; subst.
   all : eauto with DSP_compatibility_lemmas typing.
+  - (* BREAK BECAUSE OF NEW TYABS *)
+    admit.
   - rewrite flatten_app in H5.
     apply map_normalise__app in H5.
     destruct H5 as [l1n [l2n [Hmn__l1n [Hmn__l2n Heq]]]].
@@ -102,7 +104,7 @@ Proof with eauto.
     + rewrite app_assoc...
       rewrite app_assoc...
       rewrite <- flatten_app...
-Qed.
+Admitted.
 
 
 (* Reflexivity of one-hole contexts *)
@@ -135,4 +137,6 @@ Proof with eauto with hintdb_compat_context.
 
   all: intros Δ₁ Γ₁ Δ Γ T T₁ H_C_ty.
   all: inversion H_C_ty; subst...
-Qed.
+  (* BREAK BECAUSE OF TYABS *)
+  admit.
+Admitted.

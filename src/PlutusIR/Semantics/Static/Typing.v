@@ -6,6 +6,7 @@ Require Export PlutusCert.PlutusIR.Semantics.Static.Context.
 Require Export PlutusCert.PlutusIR.Semantics.Static.Kinding.
 Require Export PlutusCert.PlutusIR.Semantics.Static.Normalisation.
 Require Export PlutusCert.PlutusIR.Semantics.Static.TypeSubstitution.
+Require Export PlutusCert.PlutusIR.Semantics.Dynamic.AnnotationSubstitution.
 Require Export PlutusCert.PlutusIR.Semantics.Static.Builtins.Signatures.
 
 Import Coq.Lists.List.
@@ -62,6 +63,19 @@ Reserved Notation "Delta ',,' Gamma '|-ok_b' b" (at level 101, b at level 0, no 
 
 Local Open Scope list_scope.
 
+(* Using substitute annotation. 
+ TODO: Does the renaming variant already exist somewhere in the codebase? *)
+Definition rename_ty (X X' : string) (t : term) : term :=
+  AnnotationSubstitution.substA X (Ty_Var X') t.
+
+Definition Γ_ftv (Γ : list (string * ty)) : list string := 
+  flatten (map FreeVars.Ty.ftv (map snd Γ)).
+
+Definition tv (t : term) : list string := 
+  FreeVars.Term.ftv t ++ BoundVars.btv t.
+
+(* Typing rules for terms *)
+
 Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty -> Prop :=
   (* Simply typed lambda caclulus *)
   | T_Var : forall Γ Δ x T Tn,
@@ -78,9 +92,21 @@ Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty ->
       Δ ,, Γ |-+ t2 : T1n ->
       Δ ,, Γ |-+ (Apply t1 t2) : T2n
   (* Universal types *)
-  | T_TyAbs : forall Δ Γ X K t Tn,
+  | T_TyAbs : forall Δ Γ X K t Tn, (* Without renaming, blocking wrong shadowing*)
       ((X, K) :: Δ) ,, Γ |-+ t : Tn ->
+      (* Free type variables is enough: 
+        If there is a bound variable, e.g. (X, ∀α. α) ∈ Γ
+        We can add α to Δ without any problems, because it does not shadow anything then.
+      *)
+      ~ In X (Γ_ftv Γ) ->
       Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall X K Tn)
+  | T_TyAbs_ren : forall Δ Γ X X' K t Tn,
+      X <> X' -> (* So that we can always only use one TyAbs rule*)
+      ~ In X' (Γ_ftv Γ) -> 
+      ~ In X' (tv t) -> (* Do we even need ftv? If they are in ftv t, they should be in the Γ already. Well-formedness?*)
+      (* Besides free type variables, we also need bound ones, because otherwise we can have capture*)
+      ((X', K) :: Δ) ,, Γ |-+ (rename_ty X X' t) : Tn ->
+      Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall X' K Tn)
   | T_TyInst : forall Δ Γ t1 T2 T1n X K2 T0n T2n,
       Δ ,, Γ |-+ t1 : (Ty_Forall X K2 T1n) ->
       Δ |-* T2 : K2 ->
@@ -192,6 +218,42 @@ Combined Scheme has_type__multind from
   bindings_well_formed_nonrec__ind,
   bindings_well_formed_rec__ind,
   binding_well_formed__ind.
+
+(* Invalid shadowing *)
+Lemma typing_const_counterexample : 
+  [] ,, [] 
+  |-+ (TyAbs "α" Kind_Base (LamAbs "x" (Ty_Var "α") (TyAbs "α" Kind_Base (LamAbs "y" (Ty_Var "α") (Var "x"))))) 
+  : (Ty_Forall "α" Kind_Base (Ty_Fun (Ty_Var "α") (Ty_Forall "α" Kind_Base (Ty_Fun (Ty_Var "α") (Ty_Var "α"))))) -> False.
+Proof.
+  intros Hcontra.
+  inversion Hcontra; subst.
+  - inversion H3; subst.
+    clear H9.
+    clear H6.
+    clear H7.
+    inversion H10; subst.
+    + simpl in H7. destruct H7. left. reflexivity.
+    + contradiction H7. reflexivity.
+  - contradiction H6. reflexivity.
+Qed.
+
+(* Const function with type it should have *)
+Lemma typing_const_example : 
+  [] ,, [] 
+  |-+ (TyAbs "α" Kind_Base (LamAbs "x" (Ty_Var "α") (TyAbs "α" Kind_Base (LamAbs "y" (Ty_Var "α") (Var "x"))))) 
+  : (Ty_Forall "α" Kind_Base (Ty_Fun (Ty_Var "α") (Ty_Forall "β" Kind_Base (Ty_Fun (Ty_Var "β") (Ty_Var "α"))))).
+Proof.
+  constructor; auto.
+  constructor; auto.
+  constructor; auto.
+  constructor.
+  - discriminate.
+  - intros Hcontra. inversion Hcontra. discriminate. simpl in H. inversion H.
+  - simpl. intros Hcontra. destruct Hcontra. discriminate. contradiction.
+  - constructor; try constructor; auto.
+    econstructor; eauto.
+    simpl. reflexivity.
+Qed.
 
 Definition well_typed t := exists T, [] ,, [] |-+ t : T.
 

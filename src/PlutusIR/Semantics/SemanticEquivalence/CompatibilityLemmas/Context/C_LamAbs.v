@@ -1,10 +1,10 @@
 From PlutusCert Require Import
   PlutusIR.Semantics.Dynamic
   PlutusIR.Semantics.SemanticEquivalence.LogicalRelation
-  Normalisation
+  Normalisation.Normalisation
   Util.Map
   CompatibilityLemmas.LamAbs
-  Kinding
+  Kinding.Kinding
 .
 
 Lemma compatibility_C_LamAbs : forall Δ₁ Γ₁ v C1 C2 Δ Γ T T₁ T₁n T₂,
@@ -22,5 +22,7 @@ Proof.
   intros e1 e2 H_approx_e1_e2.
   simpl.
   eauto using compatibility_LamAbs.
-Qed.
+  (* BREAK BECAUSE OF NEW TY_ABS *)
+  admit.
+Admitted.
 
