@@ -10,8 +10,9 @@ Require Export PlutusCert.PlutusIR.Semantics.Static.TypeSubstitution.
 Require Export PlutusCert.PlutusIR.Semantics.Static.Builtins.Signatures.
 Require Import PlutusCert.PlutusIR.Analysis.BoundVars.
 Require Export PlutusCert.PlutusIR.Analysis.FreeVars.
+From PlutusCert Require Import Dynamic.AnnotationSubstitution.
 
-From PlutusCert Require Import util.
+From PlutusCert Require Import alpha.util.
 
 
 Import Coq.Lists.List.
@@ -142,6 +143,11 @@ Proof.
     reflexivity.
 Qed.
 
+Inductive FreshOver : string -> list string -> Prop :=
+  | FreshOver_nil : forall fr, FreshOver fr []
+  | FreshOver_cons : forall fr x xs, ~ In fr (x :: xs) -> FreshOver fr xs -> FreshOver fr (x :: xs).
+
+
 Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty -> Prop :=
   (* Simply typed lambda caclulus *)
   | T_Var : forall Γ Δ x T Tn K,
@@ -159,9 +165,10 @@ Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty ->
       Δ ,, Γ |-+ t2 : T1n ->
       Δ ,, Γ |-+ (Apply t1 t2) : T2n
   (* Universal types *)
-  | T_TyAbs : forall Δ Γ X K t Tn,
-      ((X, K) :: Δ) ,, Γ |-+ t : Tn ->
-      Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall X K Tn)
+  | T_TyAbs : forall Δ Γ X K t Tn Y,
+      FreshOver Y (map fst Δ) -> (* Do we need more? prolly term/gamma?*)
+      ((Y, K) :: Δ) ,, Γ |-+ (substA X (Ty_Var Y) t) : Tn ->
+      Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall Y K Tn)
   | T_TyInst : forall Δ Γ t1 T2 T1n X K2 T0n T2n,
       Δ ,, Γ |-+ t1 : (Ty_Forall X K2 T1n) ->
       ((X, K2)::Δ) |-* T1n : Kind_Base -> (* Richard: Added *)
@@ -326,11 +333,6 @@ Qed.
 
 
 Opaque dtdecl_freshR.
-
-
-Inductive FreshOver : string -> list string -> Prop :=
-  | FreshOver_nil : forall fr, FreshOver fr []
-  | FreshOver_cons : forall fr x xs, ~ In fr (x :: xs) -> FreshOver fr xs -> FreshOver fr (x :: xs).
 
 Lemma K_TyForalls_constructor : forall Δ T YKs,
       (rev (map fromDecl YKs) ++ Δ) |-* T : Kind_Base ->

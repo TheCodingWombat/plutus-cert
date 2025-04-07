@@ -3,6 +3,7 @@ Require Import Coq.Lists.List.
 Import ListNotations.
 Require Import Coq.Bool.Bool.
 Require Import Coq.Strings.String.
+Require Import micromega.Lia. (* Importing the module for lia tactic *)
 
 Local Open Scope string_scope.
 
@@ -16,7 +17,9 @@ From PlutusCert Require Import
     Equality
     Kinding.Checker
     Util
-    SubstituteTCA.
+    Dynamic.AnnotationSubstitution
+    SubstituteTCA
+    Size.
 Require Import PlutusCert.PlutusIR.Analysis.BoundVars.
 
 Scheme has_type_mut_ind := Induction for has_type Sort Prop
@@ -82,6 +85,15 @@ Definition is_KindBase (k : option kind) : bool :=
   | Some Kind_Base => true
   | _ => false
   end.
+
+
+Definition fresh28 (Δ : list (string * kind)) : string := 
+  "a" ++ String.concat EmptyString (map fst Δ).
+
+Lemma fresh28_fresh_over_Δ : forall Δ,
+  FreshOver (fresh28 Δ) (map fst Δ).
+Proof.
+Admitted.
 
 Definition constructor_well_formed_check (Δ : list (binderTyname * kind)) (v : vdecl) (Tr : ty ) : bool :=
   match v with
@@ -156,89 +168,120 @@ Definition bindings_well_formed_rec_check : (binding -> bool) -> list binding ->
       | _ => true
     end.
 
-Fixpoint type_check (Δ : list (binderTyname * kind)) (Γ : list (binderName * ty)) (term : term) {struct term} : (option ty) :=
-    match term with
-    | Var x => lookup x Γ >>= fun T => normaliser_Jacco Δ T
-    | LamAbs x T1 t => 
-        normaliser_Jacco Δ T1 >>= fun T1n =>
-        match type_check Δ ((x, T1n) :: Γ) t, kind_check Δ T1 with
-        | Some T2, Some Kind_Base => Some (Ty_Fun T1n T2) (* TODO: no normalisation of T2? Is it always normal? In the has_type efinition it is called T2n, so maybe it is*)
-        | _, _ => None
-        end
-    | Apply t1 t2 => (* TODO: normalisation? *)
-        match type_check Δ Γ t1, type_check Δ Γ t2 with
-        | Some (Ty_Fun T1 T2), Some T1' =>
-            if Ty_eqb T1 T1' then Some T2 else None
-        | _, _ => None
-        end
-    | TyAbs X K t => (* TODO: normalisation T?*)
-      (* If K in Δ, then 
-          1. create fresh K'
-          2 rename K to K' in t 
-           
-           final type    Ty_Forall X K' T
-          *)
+Lemma substA_Var_same_size : forall x y t,
+    size (substA x (Ty_Var y) t) = size t.
+Proof.
+Admitted.
 
-        match type_check ((X, K) :: Δ) Γ t with
-        | Some T => Some (Ty_Forall X K T)
+From Equations Require Import Equations.
+    
+Equations? type_check (Δ : list (binderTyname * kind)) 
+                     (Γ : list (binderName * ty)) 
+                     (t : term) : option ty 
+  by wf (size t) lt :=
+
+  type_check Δ Γ (Var x) => 
+    match lookup x Γ with
+    | Some T => normaliser_Jacco Δ T
+    | None => None
+    end;
+
+  type_check Δ Γ (LamAbs x T1 t0) =>
+    match normaliser_Jacco Δ T1 with
+    | Some T1n =>
+        match kind_check Δ T1 with
+        | Some Kind_Base =>
+            match type_check Δ ((x, T1n) :: Γ) t0 with
+            | Some T2 => Some (Ty_Fun T1n T2)
+            | None => None
+            end
         | _ => None
         end
-    | TyInst t1 T2 => (* TODO: normalisation T1?*)
-        match type_check Δ Γ t1, kind_check Δ T2 with (* TODO: first we check that it kind and type checks here, and then normaliser_Jacco does it again. Feels a little off*)
-        | Some (Ty_Forall X K2 T1), Some K2' =>
-            match kind_check ((X, K2)::Δ) T1 with
-            | Some Kind_Base =>
+    | None => None
+    end;
+
+  type_check Δ Γ (Apply t1 t2) =>
+    match type_check Δ Γ t1, type_check Δ Γ t2 with
+    | Some (Ty_Fun T1 T2), Some T1' =>
+        if Ty_eqb T1 T1' then Some T2 else None
+    | _, _ => None
+    end;
+
+  type_check Δ Γ (TyAbs X K t) =>
+    let Y := fresh28 Δ in
+    match type_check ((Y, K) :: Δ) Γ (substA X (Ty_Var Y) t) with
+    | Some T => Some (Ty_Forall Y K T)
+    | None => None
+    end;
+
+  type_check Δ Γ (TyInst t1 T2) =>
+    match type_check Δ Γ t1, kind_check Δ T2 with
+    | Some (Ty_Forall X K2 T1), Some K2' =>
+        match kind_check ((X, K2)::Δ) T1 with
+        | Some Kind_Base =>
             if Kind_eqb K2 K2' then 
                 normaliser_Jacco Δ T2 >>= fun T2n =>
                 normaliser_Jacco Δ (substituteTCA X T2n T1) >>= fun T0n =>
                 Some T0n
             else None
-            | _ => None
-            end
-        | _, _ => None
-        end
-    | IWrap F T M =>
-        match kind_check Δ T, kind_check Δ F, type_check Δ Γ M with
-        | Some K, Some (Kind_Arrow (Kind_Arrow K' Kind_Base) (Kind_Arrow K'' Kind_Base)), Some T0n
-            => if andb (Kind_eqb K K') (Kind_eqb K K'') then
-                    normaliser_Jacco Δ T >>= fun Tn =>
-                    normaliser_Jacco Δ F >>= fun Fn =>
-                    normaliser_Jacco Δ (unwrapIFixFresh Fn K Tn) >>= fun T0n' =>
-                    if Ty_eqb T0n T0n' then 
-                        Some (Ty_IFix Fn Tn)
-                    else None 
-                else None 
-        | _, _, _ => None
-        end
-    | Unwrap M =>
-        match type_check Δ Γ M with
-            | Some (Ty_IFix F T) =>
-                match kind_check Δ T, kind_check Δ F with
-                    | Some K, Some (Kind_Arrow (Kind_Arrow K' Kind_Base) (Kind_Arrow K'' Kind_Base)) =>
-                        if andb (Kind_eqb K K') (Kind_eqb K K'') then
-                          normaliser_Jacco Δ (unwrapIFixFresh F K T) >>= fun T0n => Some T0n
-                        else None
-                    | _, _ => None
-                    end 
-            | _ => None
-            end
-    | Constant (ValueOf T a) => Some (Ty_Builtin T)
-    | Builtin f =>
-        let T := lookupBuiltinTy f in
-        normaliser_Jacco Δ T >>= fun Tn =>
-        Some Tn
-    | Error S' => normaliser_Jacco Δ S' >>= fun S'n => match kind_check Δ S' with
-        | Some Kind_Base => Some S'n
         | _ => None
         end
-    | Let NonRec bs t =>
+    | _, _ => None
+    end;
+
+  type_check Δ Γ (IWrap F T M) =>
+    match kind_check Δ T, kind_check Δ F, type_check Δ Γ M with
+    | Some K, Some (Kind_Arrow (Kind_Arrow K' Kind_Base) (Kind_Arrow K'' Kind_Base)), Some T0n =>
+        if andb (Kind_eqb K K') (Kind_eqb K K'') then
+            normaliser_Jacco Δ T >>= fun Tn =>
+            normaliser_Jacco Δ F >>= fun Fn =>
+            normaliser_Jacco Δ (unwrapIFixFresh Fn K Tn) >>= fun T0n' =>
+            if Ty_eqb T0n T0n' then 
+                Some (Ty_IFix Fn Tn)
+            else None 
+        else None 
+    | _, _, _ => None
+    end;
+
+  type_check Δ Γ (Unwrap M) =>
+    match type_check Δ Γ M with
+    | Some (Ty_IFix F T) =>
+        match kind_check Δ T, kind_check Δ F with
+        | Some K, Some (Kind_Arrow (Kind_Arrow K' Kind_Base) (Kind_Arrow K'' Kind_Base)) =>
+            if andb (Kind_eqb K K') (Kind_eqb K K'') then
+              normaliser_Jacco Δ (unwrapIFixFresh F K T) >>= fun T0n => 
+              Some T0n
+            else None
+        | _, _ => None
+        end 
+    | _ => None
+    end;
+
+  type_check Δ Γ (Constant (ValueOf T a)) => Some (Ty_Builtin T);
+
+  type_check Δ Γ (Builtin f) =>
+    let T := lookupBuiltinTy f in
+    normaliser_Jacco Δ T >>= fun Tn =>
+    Some Tn;
+
+  type_check Δ Γ (Error S') =>
+    normaliser_Jacco Δ S' >>= fun S'n => 
+    match kind_check Δ S' with
+    | Some Kind_Base => Some S'n
+    | _ => None
+    end;
+    (* TODO LETS *)
+
+        (* | Let NonRec bs t =>
         if no_dup_fun (btvbs bs ++ (map fst Δ)) then
           let Δ' := flatten (map binds_Delta bs) ++ Δ in
           let xs := (insert_deltas_bind_Gamma_nr bs Δ) in
           
             map_normaliser xs >>= fun bsgn => (* TODO:  Δ' ?*) (* TODO different Δ*)
             let Γ' := bsgn ++ Γ in
-            if (bindings_well_formed_nonrec_check (binding_well_formed_check type_check) Δ Γ bs) then 
+            let type_check_wrapper := fun Δ Γ t => type_check Δ Γ t in
+
+            if (bindings_well_formed_nonrec_check (binding_well_formed_check type_check_wrapper) Δ Γ bs) then 
               type_check Δ' Γ' t >>= fun T =>
                 match kind_check Δ T with
                 | Some Kind_Base => Some T
@@ -253,7 +296,8 @@ Fixpoint type_check (Δ : list (binderTyname * kind)) (Γ : list (binderName * t
             let xs := (insert_deltas_rec (flatten (map binds_Gamma bs)) Δ') in
               map_normaliser xs >>= fun bsgn =>
               let Γ' := bsgn ++ Γ in
-                if (bindings_well_formed_rec_check (binding_well_formed_check type_check Δ' Γ' Rec) bs) then 
+              let type_check_wrapper := fun Δ Γ t => type_check Δ Γ t in
+                if (bindings_well_formed_rec_check (binding_well_formed_check type_check_wrapper Δ' Γ' Rec) bs) then 
                   type_check Δ' Γ' t >>= fun T =>
                     match kind_check Δ T with
                     | Some Kind_Base => Some T
@@ -261,9 +305,19 @@ Fixpoint type_check (Δ : list (binderTyname * kind)) (Γ : list (binderName * t
                       end 
                 else None
             else None
-          else None
-    | _ => None (* TODO: Case and Constr?? *)
-    end.
+          else None *)
+
+  type_check _ _ _ => None.
+Proof.
+all: intros; simpl; try lia.
+rewrite substA_Var_same_size. lia.
+Qed.
+
+(* Section term_recursivity_rectn.
+    (H_LetRec     : forall bs t m n, R bs -> P n -> n < m -> ((m = size (Let Rec bs t)) * P m)%type)
+   
+End term_recursivity_rectn. *)
+
 
 Section term_recursivity_rect.
   Variable (P : term -> Type).
@@ -353,7 +407,7 @@ Open Scope string_scope.
 Definition my_Gamma : list (string * ty) := (("x", Ty_App (Ty_Lam "y" Kind_Base (Ty_Var "y")) (Ty_Builtin DefaultUniInteger))::nil). 
 
   
-  
+Eval cbv in (type_check nil my_Gamma (Apply (Var "x") (Var "x"))).
 
 Lemma constructor_well_formed_sound : 
   forall Δ c T, constructor_well_formed_check Δ c T = true -> Δ |-ok_c c : T.
@@ -426,6 +480,8 @@ Proof.
     f_equal; auto.
 Qed.
 
+Require Import Coq.Program.Equality.
+
 Theorem type_checking_sound : 
  forall Δ Γ t ty, type_check Δ Γ t = Some ty -> (Δ ,, Γ |-+ t : ty).
 Proof with (try apply kind_checking_sound; try eapply normaliser_Jacco_sound; eauto).
@@ -483,21 +539,21 @@ Proof with (try apply kind_checking_sound; try eapply normaliser_Jacco_sound; ea
         subst.
         apply kind_checking_sound in Heqo1.  auto.
   - intros. 
-    inversion H.
-    unfold bind in H1.
+    autorewrite with type_check in H.
     repeat destruct_match.
-    remember H1 as H1_copy; clear HeqH1_copy.
-    apply normaliser_Jacco__well_kinded in H1 as [K H1].
-    apply T_Var with (T := t0) (K := K); auto.
-    apply kind_checking_complete in H1.
-    now apply normaliser_Jacco_sound in H1_copy.
+    pose proof (normaliser_Jacco__well_kinded _ _ _ H) as [K H1].
+    eapply T_Var with (T := t0) (K := K); auto.
+    now apply normaliser_Jacco_sound in H.
   - intros. 
-    inversion H0.
-    unfold bind in H0.
+    autorewrite with type_check in H0.
+    simpl in H0.
     repeat destruct_match.
-    inversion H2.
-    subst.
+    inversion H0.
+    subst. clear H0.
     eapply T_TyAbs...
+    + apply fresh28_fresh_over_Δ.
+    + (* TODO: generalize induction hypothesis *) 
+      admit.
   - intros.
     inversion H0.
     unfold bind in H2.
@@ -679,7 +735,7 @@ Proof with (try apply kind_checking_sound; try eapply normaliser_Jacco_sound; ea
       intuition.
   - intros.
     apply W_NilB_NonRec.
-Qed.
+Admitted.
 
 (* Hmmm, why does this rewrite?? This helper lemma is of course temporary TODO *)
 Lemma test (T2n T1n : ty) Δ Γ t x :
@@ -733,7 +789,8 @@ Proof.
     rewrite H1.
     now rewrite -> Ty_eqb_refl.
   - (* Case: T_TyAbs *) 
-    now apply oof2.   
+    apply oof2.   
+    admit.
   - (* Case: T_Inst *)
     rewrite H0.
     apply (normaliser_Jacco_complete h1) in n; rewrite n; simpl.
