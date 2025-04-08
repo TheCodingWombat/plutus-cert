@@ -533,3 +533,56 @@ Proof.
       apply inclusion_tail. auto.
 Admitted.
 
+
+Lemma ty_weakening_alpha' Δ Δ' Δ'α Γ Γ' Γ'α t tα T R : 
+  Δ ,, Γ |-+ t : T ->
+  inclusion Δ Δ' ->
+  inclusion Γ Γ' ->
+  Aterm R t tα ->
+  AΓ R Γ' Γ'α ->
+  AΔ R Δ' Δ'α ->
+  exists Tα,
+    Aty R T Tα /\
+    (Δ'α ,, Γ'α |-+ tα : Tα).
+Proof.
+  intros Ht HinclΔ HinclΓ.
+  generalize dependent Δ'.
+  generalize dependent Γ'.
+  generalize dependent tα.
+  generalize dependent Γ'α.
+  generalize dependent Δ'α.
+  generalize dependent R.
+  induction Ht; intros.
+  - admit.
+  - admit.
+  - inversion H0; subst.
+    remember (fresh28 Δ'α Γ'α t2) as Y'.
+    assert (exists Tα, Aty ((Y, Y')::R) Tn Tα
+      /\ 
+      (((Y', K)::Δ'α) ,, Γ'α |-+ (substA y
+        (Ty_Var Y')
+        t2) : Tα)).
+    {
+      eapply IHHt with (Γ' := Γ') (Δ'α := ((Y', K)::Δ'α)); auto.
+      - apply inclusion_tail; eauto.
+      - apply alpha_trans_rename_both; auto.
+        + (* fresh*) admit.
+        + (* fresh*) admit.
+      - apply AΓ_extend_fresh; eauto.
+        + (* NOT TRUE, Gamma' can contain anything! *) admit.
+        + (* fresh *) admit.
+      - constructor; eauto.
+        + apply AΔ_extend_fresh; eauto.
+          * (* NOT TRUE, Delta' can contain anything! *) admit.
+          * (* fresh *) admit.
+        + constructor; auto.
+    }
+    destruct H3 as [Tα [ATα Ht2]].
+    exists (Ty_Forall (fresh28 Δ'α Γ'α t2) K Tα).
+    split.
+    + admit.
+    + rewrite HeqY' in *.
+      constructor.
+      * apply fresh28_fresh.
+      * auto.
+Admitted.
