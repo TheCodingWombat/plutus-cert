@@ -1,4 +1,4 @@
-(* Require Import PlutusCert.PlutusIR.
+Require Import PlutusCert.PlutusIR.
 
 Require Import PlutusCert.PlutusIR.Semantics.Static.Typing.
 Require Import PlutusCert.Util.List.
@@ -115,4 +115,4 @@ Module Typing.
     all: eassumption.
   Qed.
 
-End Typing. *)
+End Typing.

@@ -74,68 +74,31 @@ Function size (t : term) : nat :=
         | TyAbs n k t     => size t
     end.
 
+Lemma substA_Var_same_size : forall x y t,
+    size (substA x (Ty_Var y) t) = size t.
+Proof.
+  intros.
+  induction t; simpl; try lia.
+  destr_eqb_eq x b.
+  - simpl. auto.
+  - simpl.
+    rewrite IHt.
+    auto.
+Qed.
 
 Local Open Scope list_scope.
 
 Inductive FreshOver : string -> list string -> Prop :=
   | FreshOver_nil : forall fr, FreshOver fr []
   | FreshOver_cons : forall fr x xs, ~ In fr (x :: xs) -> FreshOver fr xs -> FreshOver fr (x :: xs).
-
-Reserved Notation "Delta ',,' Gamma '|-+' t ':' T" (at level 101, t at level 0, T at level 0, no associativity).
-Inductive has_type : list (binderTyname * kind) -> list (binderName * ty) -> term -> ty -> Prop :=
-  | T_Var : forall Γ Δ x T Tn K,
-      lookup x Γ = Coq.Init.Datatypes.Some T ->
-      Δ |-* T : K -> (* Added *)
-      normalise T Tn ->
-      Δ ,, Γ |-+ (Var x) : Tn
-  | T_LamAbs : forall Δ Γ x T1 T1n t T2n,
-      Δ |-* T1 : Kind_Base ->
-      normalise T1 T1n ->
-      Δ ,, (x, T1n) :: Γ |-+ t : T2n ->
-      Δ ,, Γ |-+ (LamAbs x T1 t) : (Ty_Fun T1n T2n)
-  | T_TyAbs : forall Δ Γ X K t Tn Y,
-      FreshOver Y (map fst Δ ++ tvΓ Γ ++ tv t) -> (* TODO: may we choose a var that occurs as a term var? Think so*)
-      ((Y, K) :: Δ) ,, Γ |-+ (substA X (Ty_Var Y) t) : Tn ->
-      Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall Y K Tn)
-
-  where "Δ ',,' Γ '|-+' t ':' T" := (has_type Δ Γ t T).
-
+  
 (* May not be equal to btv because of capture, may not be equal to ftv because also capture
     TODO: what about type variables in Delta?
 *)
 Definition fresh28 (Δ : list (string * kind)) (Γ : list (string * ty)) (t : term): string := 
   "a" ++ String.concat EmptyString (map fst Δ ++ tvΓ Γ ++ tv t).
 
-Definition KB := Kind_Base.
-Definition KB2 := Kind_Base.
-
-Opaque KB.
-Opaque KB2.
-Definition KAB := Kind_Arrow Kind_Base Kind_Base.
-
-Example TyAbsLamAbsEx :
-  nil ,, nil |-+ (TyAbs "X" KB (LamAbs "v" (Ty_Var "X") (Var "v"))  ) : 
-    (Ty_Forall "Y" KB (Ty_Fun (Ty_Var "Y") (Ty_Var "Y"))).
-Proof.
-Admitted.
-
-(* This shows we must not rename in Gamma!*)
-Example TyAbsDouble :
-  nil ,, nil |-+ (TyAbs "X" KB (LamAbs "v" (Ty_Var "X")
-                        (TyAbs "X" KB2 (LamAbs "w" (Ty_Var "X") (Var "v"))))  ) :
-      (Ty_Forall "X" KB (Ty_Fun (Ty_Var "X") 
-                        (Ty_Forall "Y" KB2 (Ty_Fun (Ty_Var "Y") (Ty_Var "X"))))).
-Proof.
-Admitted.
-      
-
-(*
-type_check ((x, K)::nil) (v, Ty_Var x) (Var v) = Some (Ty_Var x).
-
-type_check ((y, K)::nil) (v, Ty_Var x) (Var v) = Some (Ty_Var y).
-*)
-
-Lemma fresh28_fresh_over_Δ : forall Δ Γ t,
+  Lemma fresh28_fresh_over_Δ : forall Δ Γ t,
   FreshOver (fresh28 Δ Γ t) (map fst Δ).
 Proof.
 Admitted.
@@ -154,16 +117,67 @@ Lemma fresh28_fresh FreshOver : forall Δ Γ t,
   FreshOver (fresh28 Δ Γ t) (map fst Δ ++ tvΓ Γ ++ tv t).
 Admitted.
 
-Lemma substA_Var_same_size : forall x y t,
-    size (substA x (Ty_Var y) t) = size t.
-Proof.
-Admitted.
-
 Lemma FreshOver_app : forall x xs ys,
     FreshOver x (xs ++ ys) -> FreshOver x xs /\ FreshOver x ys.
 Proof.
 Admitted.
 
+Reserved Notation "Delta ',,' Gamma '|-+' t ':' T" (at level 101, t at level 0, T at level 0, no associativity).
+Inductive has_type : list (binderTyname * kind) -> list (binderName * ty) -> term -> ty -> Prop :=
+  | T_Var : forall Γ Δ x T Tn K,
+      lookup x Γ = Coq.Init.Datatypes.Some T ->
+      Δ |-* T : K -> (* Added *)
+      normalise T Tn ->
+      Δ ,, Γ |-+ (Var x) : Tn
+  | T_LamAbs : forall Δ Γ x T1 T1n t T2n,
+      Δ |-* T1 : Kind_Base ->
+      normalise T1 T1n ->
+      Δ ,, (x, T1n) :: Γ |-+ t : T2n ->
+      Δ ,, Γ |-+ (LamAbs x T1 t) : (Ty_Fun T1n T2n)
+  | T_TyAbs : forall Δ Γ X K t Tn Y,
+  (* TODO: may we choose a var that occurs as a term var? Think so
+  
+    What are the consequences of this rule for weakening?
+  *)
+      FreshOver Y (map fst Δ ++ tvΓ Γ ++ tv t) -> 
+      ((Y, K) :: Δ) ,, Γ |-+ (substA X (Ty_Var Y) t) : Tn ->
+      Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall Y K Tn)
+
+  where "Δ ',,' Γ '|-+' t ':' T" := (has_type Δ Γ t T).
+
+Definition KB := Kind_Base.
+Definition KB2 := Kind_Base.
+
+Opaque KB.
+Opaque KB2.
+Definition KAB := Kind_Arrow Kind_Base Kind_Base.
+
+(* Not possible by tv of term in fresheness*)
+Example const_first_tybinder_occurs_later :
+  nil ,, nil |-+ (TyAbs "α" KB (LamAbs "X" (Ty_Var "α") 
+                    (TyAbs "α" KB (LamAbs "Y" (Ty_Var "α") (Var "X"))))) 
+            : (Ty_Forall "α" KB (Ty_Fun (Ty_Var "α") 
+                    (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "α"))))) -> False.
+Proof.
+  intros Hcontra.
+  inversion Hcontra; subst.
+  apply FreshOver_app in H3 as [_ H3].
+  apply FreshOver_app in H3 as [_ H3].
+  simpl in H3.
+  inversion H3.
+  contradiction H2.
+  apply in_eq.
+Qed.
+
+Example const :
+  nil ,, nil |-+ (TyAbs "α" KB (LamAbs "X" (Ty_Var "α") 
+                    (TyAbs "α" KB (LamAbs "Y" (Ty_Var "α") (Var "X"))))) 
+            : (Ty_Forall "α'" KB (Ty_Fun (Ty_Var "α'") 
+                    (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "α'"))))).
+Proof.
+  repeat constructor; simpl; intuition.
+  eapply T_Var; eauto. simpl; eauto. constructor. simpl. auto.
+Qed.  
 
 From Equations Require Import Equations.
     
@@ -171,7 +185,6 @@ Equations? type_check (Δ : list (binderTyname * kind))
                      (Γ : list (binderName * ty)) 
                      (t : term) : option ty 
   by wf (size t) lt :=
-
   type_check Δ Γ (Var x) => 
     match lookup x Γ with
     | Some T => normaliser_Jacco Δ T
@@ -242,10 +255,6 @@ Inductive AΔ : list (string * string) -> list (binderTyname * PlutusIR.kind) ->
     AΔ R Δ Δ' ->
     AlphaVar R x y ->
     AΔ R ((x, K)::Δ) ((y, K)::Δ').
-
-(* Currently sequential, do we want that? *)
-Definition renTs (R : list (string * string)) (T : ty) : ty :=
-  msubstT (map (fun p => (fst p, Ty_Var (snd p))) R) T.
 
 (* Contextual alpha equivalence: type contexts that match alpha contexts*)
 Inductive AΓ : list (string * string) -> list (binderName * ty) -> list (binderName * ty) -> Prop :=
@@ -326,7 +335,9 @@ Lemma has_kind_alpha : forall Δ Δ' T T' K R,
     Δ' |-* T' : K.
 Admitted.
 
-(* See alpha_rename.v*)
+(* See alpha_rename.v
+  this is what connects substA to Alpha
+*)
 Lemma alpha_substA : forall x y t,
     ~ In y (tv t) ->
     Aterm ((x, y)::nil) t (substA x (Ty_Var y) t).
@@ -490,4 +501,35 @@ Proof with (try apply kind_checking_complete; try eapply normaliser_Jacco_comple
 Qed.
 
 
+
+(***  Weakening *)
+
+Lemma kind_weakening Δ Δ' T K : 
+  Δ |-* T : K ->
+  inclusion Δ Δ' ->
+  Δ' |-* T : K.
+Proof.
+Admitted.
+
+Lemma ty_weakening Δ Δ' Γ Γ' t T : 
+  Δ ,, Γ |-+ t : T ->
+  inclusion Δ Δ' ->
+  inclusion Γ Γ' ->
+  Δ' ,, Γ' |-+ t : T.
+Proof.
+  intros Ht HinclΔ HinclΓ.
+  generalize dependent Δ'.
+  generalize dependent Γ'.
+  induction Ht; intros.
+  - eapply T_Var with (T := T) (K := K); auto.
+    eapply kind_weakening; eauto.
+  - eapply T_LamAbs; auto.
+    + eapply kind_weakening; eauto.
+    + eapply IHHt; eauto. 
+      apply inclusion_tail. auto.
+  - eapply T_TyAbs; auto.
+    + (* Not true, we could have weakened by the previously fresh var*) admit. 
+    + eapply IHHt; eauto.
+      apply inclusion_tail. auto.
+Admitted.
 
