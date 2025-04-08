@@ -48,10 +48,31 @@ Fixpoint tv (t : term) : list string :=
   | TyAbs n K t0 => n :: (tv t0)
   end.
 
+(* free term variables*)
+Fixpoint fv (t : term) : list string :=
+  match t with
+  | Var x => [x]
+  | LamAbs n T t0 => remove string_dec n (fv t0)
+  | TyAbs n K t0 => fv t0
+  end. 
+
+(* free and bound term variables*)
+Fixpoint v (t : term) : list string :=
+  match t with
+  | Var x => [x]
+  | LamAbs n T t0 => n :: (v t0)
+  | TyAbs n K t0 => v t0
+  end. 
+
 End term.
 
 Definition tvΓ (Γ : list (binderName * ty)) : list string :=
   flat_map (fun x => (Ty.btv (snd x) ++ Ty.ftv (snd x))%list) Γ.
+
+(* only take those tvs in rhs of Γ that are referenced in t (both bound and free to not struggle with binders) *)
+Definition tvΓt t (Γ : list (binderName * ty)) : list string :=
+  flat_map (fun x => (Ty.btv (snd x) ++ Ty.ftv (snd x))%list)
+           (filter (fun p => if (in_dec string_dec (fst p) (v t)) then true else false) Γ).
 
 Fixpoint substA (X : string) (U : ty) (t : term) {struct t} : term :=
   match t with
@@ -96,20 +117,16 @@ Inductive FreshOver : string -> list string -> Prop :=
     TODO: what about type variables in Delta?
 *)
 Definition fresh28 (Δ : list (string * kind)) (Γ : list (string * ty)) (t : term): string := 
-  "a" ++ String.concat EmptyString (map fst Δ ++ tvΓ Γ ++ tv t).
+  "a" ++ String.concat EmptyString (tv t).
 
-  Lemma fresh28_fresh_over_Δ : forall Δ Γ t,
-  FreshOver (fresh28 Δ Γ t) (map fst Δ).
-Proof.
-Admitted.
 
 Lemma fresh28_fresh_over_t : forall Δ Γ t,
   FreshOver (fresh28 Δ Γ t) (tv t).
 Proof.
 Admitted.
 
-Lemma fresh28_fresh_over_Γ : forall Δ Γ t,
-  FreshOver (fresh28 Δ Γ t) (tvΓ Γ).
+Lemma fresh28_fresh_over_used_Γ : forall Δ Γ t,
+  forall v T, In v (fv t) -> lookup v Γ = Some T -> FreshOver (fresh28 Δ Γ t) (plutusTv T).
 Proof.
 Admitted.
 
@@ -139,7 +156,8 @@ Inductive has_type : list (binderTyname * kind) -> list (binderName * ty) -> ter
   
     What are the consequences of this rule for weakening?
   *)
-      FreshOver Y (map fst Δ ++ tvΓ Γ ++ tv t) -> 
+      FreshOver Y (tv t) -> 
+      (forall v (T : ty), In v (fv t) -> lookup v Γ = Some T -> FreshOver Y (plutusTv T)) ->
       ((Y, K) :: Δ) ,, Γ |-+ (substA X (Ty_Var Y) t) : Tn ->
       Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall Y K Tn)
 
@@ -160,14 +178,14 @@ Example const_first_tybinder_occurs_later :
                     (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "α"))))) -> False.
 Proof.
   intros Hcontra.
-  inversion Hcontra; subst.
+  (* inversion Hcontra; subst.
   apply FreshOver_app in H3 as [_ H3].
   apply FreshOver_app in H3 as [_ H3].
   simpl in H3.
   inversion H3.
   contradiction H2.
-  apply in_eq.
-Qed.
+  apply in_eq. *)
+Admitted.
 
 Example const :
   nil ,, nil |-+ (TyAbs "α" KB (LamAbs "X" (Ty_Var "α") 
@@ -175,9 +193,26 @@ Example const :
             : (Ty_Forall "α'" KB (Ty_Fun (Ty_Var "α'") 
                     (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "α'"))))).
 Proof.
-  repeat constructor; simpl; intuition.
-  eapply T_Var; eauto. simpl; eauto. constructor. simpl. auto.
-Qed.  
+  repeat constructor.
+  - (* is fresh *) admit.
+  - (* is fresh *)admit.
+  - (* is fresh *) admit.
+  - simpl.
+    intros.
+    inversion H0.
+  - (* is fresh *) admit.
+  - simpl fv.
+    intros.
+    inversion H. subst.
+    + simpl in H0.
+      inversion H0.
+      simpl.
+      (* is fresh *) admit.
+    + inversion H1.
+  - eapply T_Var; eauto.
+    + simpl. auto.
+    + constructor. simpl. eauto.
+Admitted.  
 
 From Equations Require Import Equations.
     
@@ -264,8 +299,20 @@ Inductive AΓ : list (string * string) -> list (binderName * ty) -> list (binder
     Aty R T T' ->
     AΓ R ((x, T)::Γ) ((x, T')::Γ').
 
+(* Contextual alpha equivalence: type contexts that match alpha contexts, but only for entries that are present in t *)
+Inductive AΓt : list (string * string) -> term -> list (binderName * ty) -> list (binderName * ty) -> Prop :=
+  | AΓt_nil R t : AΓt R t nil nil
+  | AΓt_cons x t T T' R Γ Γ' :
+    AΓt R t Γ Γ' ->
+    (In x (v t) -> Aty R T T') ->
+    AΓt R t ((x, T)::Γ) ((x, T')::Γ').
+
 Lemma AΓ_refl : forall Γ,
     AΓ [] Γ Γ.
+Admitted.
+
+Lemma AΓt_refl : forall Γ t,
+    AΓt [] t Γ Γ.
 Admitted.
 
 Lemma Aty_refl : forall T,
@@ -285,19 +332,35 @@ Admitted.
 
 Require Import Coq.Program.Equality.
 
-Lemma AΓ_Some {R Γ Γ' x T} :
-    AΓ R Γ Γ' ->
+Lemma AΓt_lam : forall x t T R Γ Γ',
+    AΓt R (LamAbs x T t) Γ Γ' ->
+    AΓt R t Γ Γ'.
+Proof.
+  intros.
+  dependent induction H.
+  - constructor.
+  - constructor; auto.
+    + eapply IHAΓt; eauto.
+    + intros.
+      eapply H0.
+      (* If x0 in the term variables of t, then it doesnt suddenly get removed when enclosing it in lambda*)
+      admit.
+Admitted.
+
+Lemma AΓt_Some {R t Γ Γ' x T} :
+    AΓt R t Γ Γ' ->
+    In x (v t) ->  (* Only the ones we care for, appearing as term variables*)
     lookup x Γ = Some T ->
     exists T', 
       Aty R T T' /\
       lookup x Γ' = Some T'.
 Admitted.
 
-Lemma AΓ_extend_fresh : forall Y Y' Γ Γ' R,
-    FreshOver Y (tvΓ Γ) ->
-    FreshOver Y' (tvΓ Γ') ->
-    AΓ R Γ Γ' ->
-    AΓ ((Y, Y')::R) Γ Γ'.
+Lemma AΓt_extend_fresh : forall t Y Y' Γ Γ' R,
+    FreshOver Y (tvΓt t Γ) ->
+    FreshOver Y' (tvΓt t Γ') ->
+    AΓt R t Γ Γ' ->
+    AΓt ((Y, Y')::R) t Γ Γ'.
 Admitted.
 
 Lemma AΔ_extend_fresh : forall Y Y' Δ Δ' R,
@@ -364,7 +427,7 @@ Admitted.
 
 Lemma type_checking_complete' : forall Δ Δ' Γ Γ' t t' T R,
     AΔ     R Δ Δ' ->
-    AΓ     R Γ Γ' ->
+    AΓt     R t Γ Γ' ->
     Aterm  R t t' ->
     has_type Δ Γ t T ->
     exists T',
@@ -380,7 +443,15 @@ Proof.
   - intros R Γ' AΓ Δ' AΔ t' Ha.
     inversion Ha; subst.
     autorewrite with type_check.
-    destruct (AΓ_Some AΓ H) as [T' [HaT' HlookupT']].
+    assert (exists T', Aty R T T' /\ lookup x Γ' = Some T').
+    {
+      eapply @AΓt_Some with (Γ := Γ) (t := Var x).
+      + simpl. auto.
+      + simpl. auto.
+      + auto.
+    }
+
+    destruct H2 as [T' [HaT' HlookupT']].
     rewrite HlookupT'.
     eapply normaliser_Jacco_complete in H1; eauto.
     eapply normaliser_Jacco_alpha; eauto.
@@ -398,6 +469,7 @@ Proof.
     {
       eapply IHhas_type; auto.
       constructor; auto.
+      eapply AΓt_lam; eauto.
     }
 
     exists (Ty_Fun T2_normalised T').
@@ -420,24 +492,20 @@ Proof.
       type_check ((Y', K)::Δ') Γ' (substA y (Ty_Var Y') t2) = Some T').
     {
       eapply IHhas_type.
-      - apply AΓ_extend_fresh; auto. 
-        + apply FreshOver_app in H as [_ H].
-          apply FreshOver_app in H as [H _].
-          auto.
-        + rewrite HeqY'.
-          eapply fresh28_fresh_over_Γ.
-      - constructor. 
-        apply AΔ_extend_fresh; auto.
-        + apply FreshOver_app in H as [H _]; auto.
-        + rewrite HeqY'. apply fresh28_fresh_over_Δ.
-        + constructor.
-      - eapply alpha_trans_rename_both; auto.
-        + apply FreshOver_app in H as [_ H].
-          apply FreshOver_app in H as [_ H']. auto.
-        + rewrite HeqY'.
-          eapply fresh28_fresh_over_t.
+      + eapply AΓt_extend_fresh; eauto.
+        * admit.
+        * admit.
+        * 
+        admit.
+      + constructor.
+        (* also need special AΔt I think *)
+        admit.
+        constructor.
+      + apply alpha_trans_rename_both; auto.
+        rewrite HeqY'.
+        apply fresh28_fresh_over_t.
     }
-    destruct H0 as [T' [At' HtcT']].
+    destruct H1 as [T' [At' HtcT']].
     exists (Ty_Forall Y' K T').
     split.
     + constructor. auto.
@@ -446,7 +514,7 @@ Proof.
       simpl.
       rewrite HtcT'.
       auto.
-Qed.
+Admitted.
 
 Require Import Coq.Arith.Wf_nat.
 
@@ -510,19 +578,6 @@ Lemma kind_weakening Δ Δ' T K :
   Δ' |-* T : K.
 Proof.
 Admitted.
-
-Example weakening_example :
-  nil ,, nil |-+ (TyAbs "α" KB (LamAbs "X" (Ty_Var "α") (Var "X")))
-            : (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "β"))) 
-            ->
-  (("β", KAB)::nil) ,, nil |-+ (TyAbs "α" KB (LamAbs "X" (Ty_Var "α") (Var "X")))
-            : (Ty_Forall "β" KB (Ty_Fun (Ty_Var "β") (Ty_Var "β"))).
-Proof.
-  intros.
-  constructor.
-  + (* not fresh over Delta! *) admit.
-Admitted.
-
 
 Lemma ty_weakening Δ Δ' Γ Γ' t T : 
   Δ ,, Γ |-+ t : T ->
