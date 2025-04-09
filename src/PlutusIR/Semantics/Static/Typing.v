@@ -337,13 +337,77 @@ Proof.
     (* x in Ty.btv T0n. Then either x in Ty.btv T2n or x in Ty.btv T1n.
   OR x is some new fresh binder.....
 
+  (* THIS NEEDS AN ADDITIONAL KINDING CONSTRAINT IN TYINST (just like in Richards branch)*)
   Theorem substituteTCA_preserves_kinding : forall T Delta X K U L,
     ((X, L) :: Delta) |-* T : K ->
     Delta |-* U : L ->
     Delta |-* (substituteTCA X U T) : K.
       
+    So we know Δ |-* (substituteTCA X T2n T1n) : Ksomething
+
+    normalisation does not introduce btvs, hence
+
+    In x (Ty.btv (substituteTCA X T2n T1n)).
+
+    Hence by has_kind__no_shadow, ~ In x (map fst Δ ).
+
+    Contradiction!
+
   *)
     assert (In x (Ty.btv T1n) \/ In x (Ty.btv T2n)) by admit.
+Admitted.
+
+Lemma kind_weakening : forall Δ Δ' T K,
+      List.inclusion Δ Δ' ->
+      kctx_wf Δ ->
+      kctx_wf Δ' ->
+      Forall (fun X => lookup X Δ' = None) (Ty.btv T) ->
+      Δ |-* T : K ->
+      Δ' |-* T : K.
+  Proof.
+    intros Δ Δ' T K H HT.
+    generalize dependent Δ'.
+    induction HT.
+    all: intros Δ' Hincl.
+    all: try solve [econstructor; eauto using inclusion_cons].
+  Admitted.
+
+  Lemma kind_weakening_empty : forall Δ' T K,
+      [] |-* T : K ->
+      Forall (fun X => lookup X Δ' = None) (Ty.btv T) ->
+      kctx_wf Δ' ->
+      Δ' |-* T : K.
+  Proof.
+    intros.
+    eapply kind_weakening; eauto using List.inclusion_empty.
+    constructor.
+  Qed.
+
+Lemma weakening : forall Δ Gamma t T Δ' Gamma',
+  Δ ,, Gamma |-+ t : T ->
+  Forall (fun X => lookup X Δ' = None) (Ty.btv T) ->
+  kctx_wf Δ ->
+  kctx_wf Δ' ->
+  List.inclusion Δ Δ' ->
+  List.inclusion Gamma Gamma' ->
+  Δ' ,, Gamma' |-+ t : T.
+Proof.
+  intros.
+  induction H.
+  - (* T_Var*)
+      eapply T_Var with (K := K); eauto.
+      assert (Δ' |-* Tn : K).
+      {
+        assert (Δ |-* Tn : K) by admit. (* normalise preserves kinding *)
+        eapply kind_weakening; eauto.
+      }
+      (* normalisation preserves kinding *)
+    admit.
+  - 
+
+
+Admitted.
+
 
 
 

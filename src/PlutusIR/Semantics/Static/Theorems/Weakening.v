@@ -1,4 +1,5 @@
 Require Import PlutusCert.PlutusIR.
+From PlutusCert Require Import BoundVars.
 
 Require Import PlutusCert.PlutusIR.Semantics.Static.Typing.
 Require Import PlutusCert.Util.List.
@@ -9,6 +10,9 @@ Module Kinding.
 
   Lemma weakening : forall Δ Δ' T K,
       inclusion Δ Δ' ->
+      kctx_wf Δ ->
+      kctx_wf Δ' ->
+      Forall (fun X => lookup X Δ' = None) (Ty.btv T) ->
       Δ |-* T : K ->
       Δ' |-* T : K.
   Proof.
@@ -17,14 +21,17 @@ Module Kinding.
     induction HT.
     all: intros Δ' Hincl.
     all: try solve [econstructor; eauto using inclusion_cons].
-  Qed.
+  Admitted.
 
-  Lemma weakening_empty : forall Δ T K,
+  Lemma weakening_empty : forall Δ' T K,
       [] |-* T : K ->
-      Δ |-* T : K.
+      Forall (fun X => lookup X Δ' = None) (Ty.btv T) ->
+      kctx_wf Δ' ->
+      Δ' |-* T : K.
   Proof.
     intros.
     eapply weakening; eauto using inclusion_empty.
+    constructor.
   Qed.
 
 End Kinding.
