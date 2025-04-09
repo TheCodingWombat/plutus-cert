@@ -61,9 +61,10 @@ Definition kctx_wf (Δ : list (string * kind)) := NoDup (map fst Δ).
 
 Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty -> Prop :=
   (* Simply typed lambda caclulus *)
-  | T_Var : forall Γ Δ x T Tn,
+  | T_Var : forall K Γ Δ x T Tn,
       kctx_wf Δ ->
       lookup x Γ = Coq.Init.Datatypes.Some T ->
+      Δ |-* T : K ->
       normalise T Tn ->
       Δ ,, Γ |-+ (Var x) : Tn
   | T_LamAbs : forall Δ Γ x T1 t T2n T1n,
@@ -284,6 +285,18 @@ Proof.
   intros H. eapply NoDup_app_remove_l. eauto.
 Qed.
 
+Lemma has_kind__kctx_wf : forall Δ T K,
+  Δ |-* T : K ->
+  kctx_wf Δ.
+Admitted.
+
+Lemma has_kind__no_shadow {Δ T K x } :
+  Δ |-* T : K ->
+  In x (Ty.btv T) ->
+  ~ In x (map fst Δ).
+Proof.
+Admitted.
+
 Lemma has_type__kctx_wf : forall Δ Γ t T,
   Δ ,, Γ |-+ t : T ->
   kctx_wf Δ.
@@ -294,6 +307,46 @@ Proof.
   - subst Δ'. eapply kctx_wf__append_r. eauto.
   - subst Δ'. eapply kctx_wf__append_r. eauto.
 Qed.
+
+Lemma has_type__no_shadow : forall Δ Γ t T x,
+  Δ ,, Γ |-+ t : T ->
+  In x (Ty.btv T) ->
+  ~ In x (map fst Δ).
+Proof.
+  intros.
+  intros HContra.
+  induction H; intros.
+  - assert (Δ |-* Tn : K) by admit. (* normalise preserves kinding*)
+    apply (has_kind__no_shadow H4) in H0.
+    contradiction.
+
+  - assert (In x (Ty.btv T1n) \/ In x (Ty.btv T2n)) by admit. (* btv decomposes*)
+    destruct H3.
+    + assert (Δ |-* T1n : Kind_Base) by admit. (* normalise preserves kinding *)
+      apply (has_kind__no_shadow H4) in H3.
+      contradiction.
+    + auto.
+  - assert (In x (Ty.btv (Ty_Fun T1n T2n))) by admit. (* btv composes *)
+    auto.
+  - assert (x = X) by admit. subst.
+    clear H0.
+    apply has_type__kctx_wf in H.
+    inversion H; subst.
+    contradiction.
+  - 
+    (* x in Ty.btv T0n. Then either x in Ty.btv T2n or x in Ty.btv T1n.
+  OR x is some new fresh binder.....
+
+  Theorem substituteTCA_preserves_kinding : forall T Delta X K U L,
+    ((X, L) :: Delta) |-* T : K ->
+    Delta |-* U : L ->
+    Delta |-* (substituteTCA X U T) : K.
+      
+  *)
+    assert (In x (Ty.btv T1n) \/ In x (Ty.btv T2n)) by admit.
+
+
+
 
 
 
