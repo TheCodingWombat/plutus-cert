@@ -217,6 +217,111 @@ Combined Scheme has_type__multind from
 
 Definition well_typed t := exists T, [] ,, [] |-+ t : T.
 
+(* I think we can make a non-recursive let with a constructor refering to a previous term 
+
+So maybe we create WeirdList with non-rec let
+WeirdList:
+ cons: WeirdList -> WeirdList
+  nil: WeirdList
+*)
+
+Definition mydtd :=
+  DatatypeBind (Datatype (TyVarDecl "WeirdList" Kind_Base) [] "WeirdListMatch" 
+  (* and then constructors *)
+    [
+      VarDecl "nil" (Ty_Var "WeirdList");
+      VarDecl "cons" (Ty_Fun (Ty_Var "WeirdList") (Ty_Var "WeirdList"))
+    ]
+  )
+.
+
+Definition my_other_weirdList :=
+  TypeBind (TyVarDecl "WeirdList" Kind_Base) (Ty_Builtin DefaultUniInteger).
+
+Definition myWeirdTerm :=
+  Let NonRec [my_other_weirdList]
+    (Let NonRec [mydtd] 
+      (
+        (Var "x")
+      )).
+
+Search "map_normalise".
+
+Lemma myWeirdTerm__well_typed :
+  nil ,, [("x", (Ty_Builtin DefaultUniInteger))] |-+ myWeirdTerm : (Ty_Builtin DefaultUniInteger).
+Proof.
+  unfold myWeirdTerm.
+  econstructor; eauto.
+  - unfold my_other_weirdList.
+    econstructor; eauto.
+    + constructor.
+      constructor.
+      constructor.
+    + constructor.
+  - unfold mydtd.
+    eapply T_Let with (bsGn := (flatten (map binds_Gamma [DatatypeBind (Datatype
+  (TyVarDecl "WeirdList" Kind_Base) [] "WeirdListMatch"
+  [VarDecl "nil"
+  (Ty_Var
+  "WeirdList");
+  VarDecl "cons"
+  (Ty_Fun
+  (Ty_Var
+  "WeirdList")
+  (Ty_Var
+  "WeirdList"))])]))).
+    econstructor; eauto.
+    + repeat constructor.
+    + eauto.
+    + apply W_ConsB_NonRec with (bsGn := (binds_Gamma
+          (DatatypeBind
+          (Datatype (TyVarDecl "WeirdList"
+          Kind_Base) [] "WeirdListMatch"
+          [VarDecl "nil" (Ty_Var "WeirdList");
+          VarDecl "cons"
+          (Ty_Fun (Ty_Var "WeirdList") (Ty_Var "WeirdList"))])))); eauto.
+      * eapply W_Data with (XK := (TyVarDecl "WeirdList" Kind_Base)) (YKs := nil) (cs := [VarDecl "nil" (Ty_Var "WeirdList");
+  VarDecl "cons"
+  (Ty_Fun (Ty_Var "WeirdList")
+  (Ty_Var "WeirdList"))]) (matchFunc := "WeirdListMatch"); eauto.
+        -- constructor. simpl. auto. constructor.
+        -- simpl. constructor. intuition. inversion H. inversion H0. inversion H0. constructor. intuition. constructor.
+        -- intros.
+            (* checking both constructors *)
+           induction H; subst.
+           ++ simpl.
+              econstructor; eauto.
+              unfold splitTy; eauto.
+              intros.
+              inversion H.
+           ++ induction H; subst; [|inversion H].
+              simpl.
+              econstructor; eauto.
+              simpl; eauto.
+              intros.
+              inversion H; [|inversion H0].
+              subst.
+              constructor.
+              auto.
+        -- (* 
+              We have a constraint that all argument types must be kind base, so the shadowed type
+                must always be of kind_base
+          *)
+           simpl.
+           constructor.
+           auto.
+      * (* map_normalise refl *)
+        repeat constructor.
+      * constructor.
+    + eapply T_Var; eauto.
+      constructor.
+    + constructor.
+      constructor.
+  - constructor.
+    constructor.
+Qed.
+
+
 Lemma T_Let__cons Δ Γ Γ_b b bs t Tn :
   Δ ,, Γ |-ok_b b ->
   Δ |-* Tn : Kind_Base -> (* Tn may not mention types bound in b (escaping) *)
