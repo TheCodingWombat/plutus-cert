@@ -171,7 +171,7 @@ Lemma substituteT__normalisation T Tn SubTn X U:
   normalise (substituteT X U Tn) SubTn ->
   normalise (substituteT X U T) SubTn.
 Proof.
-  
+
 Admitted.
 
 (** ** Predicates *)
@@ -181,6 +181,63 @@ Definition P_Term (t : term) :=
     [] |-* U : K ->
     normalise (substituteT X U T) Tn ->
     Delta ,, (gsubst X U Gamma) |-+ <{ :[X := U] t }> : Tn.
+
+Local Open Scope string_scope.
+Local Open Scope list_scope.
+
+Definition KB := Kind_Base.
+
+(* X is free in t *)
+Definition t := TyInst (TyAbs "X0" KB (TyAbs "X" KB (Var "x"))) (Ty_Var "X").
+Definition T := Ty_Forall (fresh "X0" (Ty_Var "X") <{ ℤ }>) KB <{ ℤ }>.
+
+Definition U := Ty_Builtin DefaultUniBool.
+
+Definition substA_t : term :=
+  <{ :[ "X" := U ] t }>.
+
+Lemma t_wt :
+  (("X", Kind_Base)::nil),, [("x", <{ ℤ }>)] |-+ t : T. 
+Proof.
+  unfold t.
+  unfold T.
+  repeat econstructor; eauto.
+  autorewrite with substituteTCA.
+  assert ("X0" <> "X") by admit. (* ADMIT: non-identical strings*)
+  apply eqb_neq in H.
+  rewrite H.
+  assert (existsb (eqb "X") (ftv (Ty_Var "X")) = true) by admit. (* ADMIT: "X" = "X"*)
+  rewrite H0.
+  simpl.
+  assert (Hren_builtin: (rename "X"
+  (fresh "X0" (Ty_Var "X") <{ ℤ }>)
+  <{ ℤ }>) = <{ ℤ }>) by admit. (* ADMIT: no ftvs in TInt to rename *)
+  rewrite Hren_builtin; clear Hren_builtin.
+  autorewrite with substituteTCA.
+  constructor. constructor.
+Admitted.
+
+Definition T2 := Ty_Forall "X" KB <{ ℤ }>.
+
+Lemma substA_t_wt :
+  [] ,, [("x", <{ ℤ }>)] |-+ substA_t : T2.
+Proof.
+  unfold substA_t.
+  unfold T.
+  simpl.
+  repeat econstructor; eauto.
+  autorewrite with substituteTCA.
+  assert ("X0" <> "X") by admit. (* ADMIT: non-identical strings*)
+  apply eqb_neq in H.
+  rewrite H.
+  assert (existsb (eqb "X") (ftv (U)) = false) by admit. (* no ftv in Bool *)
+  unfold U in H0.
+  rewrite H0.
+  unfold T2.
+  constructor.
+  constructor.
+Admitted.
+  
 
 Definition P_Binding (b : binding) : Prop :=
   forall Delta Gamma rec X K U,
@@ -246,7 +303,34 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
       * eapply Ty.kindable_empty__closed; eauto.
 
   - (* LamAbs *)
-    admit.
+    simpl.
+    simpl substituteT in Hnorm__Tn.
+    inversion Hnorm__Tn; subst.
+    constructor; auto.
+    * eapply substituteT_preserves_kinding; eauto.
+    * eapply substituteT__normalisation; eauto.
+    * assert ((s, substituteT X U T1n) :: gsubst X U Gamma = gsubst X U ((s, T1n) :: Gamma)).
+      {
+        rewrite gsubst_absorbs_substituteT; auto.
+      }
+      assert (Hgsubst_not_normal: 
+        (s, (substituteT X U T1n)) :: (gsubst X U Gamma) = 
+          (s, T1n0) :: gsubst X U Gamma).
+      {
+      (* ADMIT: substituteT X U T1n may not be normal, 
+          how to reconcile? Must gsubst also normalise? 
+          Maybe find counterexample tomorrow.
+
+          Or does typing context not have to be normal?
+          Something like, if it is well_typed for T in gamma,
+          then it is well_typed for Tn in gamma.
+          *)
+          admit.
+      }
+      rewrite <- Hgsubst_not_normal.
+      unfold P_Term in H.
+      rewrite H0.
+      eapply H; eauto.
   - (* Apply *)
     simpl.
     assert (Delta |-* (substituteT X U T1n) : Kind_Base).
@@ -263,11 +347,88 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
       constructor; eauto.
     + eapply H0; eauto.
   - (* Constant *)
-    admit.
+    simpl.
+    inversion Hnorm__Tn; subst.
+    constructor.
   - (* Builtin *)
+    simpl.
+    (* ADMIT: UHM, probably not difficult? *)
     admit.
   - (* TyInst *)
-    admit.
+    simpl.
+    unfold P_Term in H.
+    destr_eqb_eq X X0.
+    + (* X = X0 *)
+      assert (exists T1nn, normalise T1n T1nn) as [T1nn HT1nn].
+      {
+        eapply strong_normalisation; eauto.
+        apply has_type__basekinded in H2.
+        inversion H2; subst.
+        eauto.
+      } 
+      assert (exists subt0, normalise (substituteT X0 U t1) subt0) as [subt0 Hsubt0].
+        {
+          eapply strong_normalisation; eauto.
+          apply has_type__basekinded in H2.
+          inversion H2; subst.
+          eauto.
+          eapply substituteT_preserves_kinding; eauto.
+      }
+
+      econstructor.
+      * eapply H; auto.
+        simpl substituteT.
+        -- eauto.
+        -- assumption.
+        -- simpl substituteT.
+           rewrite eqb_refl.
+           constructor; eauto.
+      * eapply substituteT_preserves_kinding; eauto.
+      * eauto.
+      * (*
+        We know:   normalise (substituteT X0 U T) Tn
+         and       normalise (substituteTCA X0 T2n T1n) T.
+
+         Hence     normalise (substituteT X0 U (subsituteTCA X0 T2n T1n)) Tn.      
+
+         Also   normalise T1n T1nn
+          Hence     normalise (substituteT X0 U (subsituteTCA X0 T2n T1nn)) Tn.
+
+          So let us simplify the argument by (wrongly) equating normal stuff
+        *)
+        assert (T1nn = T1n) by admit. clear HT1nn. subst.
+        assert (T2n = t1) by admit. clear H6. subst.
+        assert (subt0 = substituteT X0 U t1) by admit. clear Hsubt0. subst.
+        assert (Tn = substituteT X0 U T) by admit. clear Hnorm__Tn. subst.
+        assert (T = (substituteTCA X0 t1 T1n)) by admit. clear H8. subst.
+        (* Is that true? I fear alpha equivalence.
+          Create some examples.
+          It is not.
+        *)
+
+
+        admit.
+    + (* X <> X0 *)
+      assert (exists SubT1nn, normalise (substituteT X U T1n) SubT1nn) as [SubT1nn HT1nn].
+      {
+        eapply strong_normalisation; eauto.
+        apply has_type__basekinded in H2.
+        inversion H2; subst.
+        eauto.
+        eapply substituteT_preserves_kinding; eauto.
+        eapply Kinding.weakening; eauto.
+        apply inclusion_swap; eauto.
+      } 
+
+      econstructor.
+      * eapply H; eauto.
+        simpl substituteT.
+        apply eqb_neq in H0.
+        rewrite H0.
+        constructor; eauto.
+      * admit.
+      * admit.
+      * admit.
   - (* Error *)
     admit.
   - (* IWrap *)
