@@ -336,27 +336,12 @@ Qed.
 Lemma step_nd_implies_step_gu_na t t' : 
     step_nd t t' ->  
     {t_α & step_gu t t_α * (nil ⊢ t' ~ t_α)}%type.
-Proof.
-    remember (to_GU t) as t_GU.
-    assert (nil ⊢ t ~ t_GU) as H_alpha.
-    {
-      subst.
-      apply to_GU__alpha.
-    }
-    assert (GU t_GU) as H_GU.
-    {
-      subst.
-      apply to_GU__GU.
-    }
+Proof with auto using to_GU__alpha, to_GU__GU.
     intros.
-    remember (step_nd_preserves_alpha H_alpha H) as Hstep_GU.
-    destruct Hstep_GU as [t_GU' [Hstep_GU Halpha_GU] ].
-    exists t_GU'.
-    split; auto.
-    clear HeqHstep_GU.
-    apply GU_step_d_implies_step_na in Hstep_GU.
-    + apply step_gu_intro with (s' := t_GU); auto.
-    + subst. auto.
+    destruct (step_nd_preserves_alpha (to_GU__alpha t) H) as [t_GU' [Hstep_GU Halpha_GU] ].
+    exists t_GU'; split; auto.
+    apply GU_step_d_implies_step_na in Hstep_GU...
+    apply step_gu_intro with (s' := (to_GU t))...
 Qed.
 
 Theorem α_preserves_sn_nd s s' :

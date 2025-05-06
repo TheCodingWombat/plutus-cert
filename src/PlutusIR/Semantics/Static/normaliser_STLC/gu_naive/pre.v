@@ -203,7 +203,7 @@ Inductive GU : term -> Set :=
 | GU_app {B} s t : 
     GU s -> 
     GU t -> 
-    forall (H_btv_btv_empty : forall x, In x (btv t) -> ~ In x (tv s)),
+    forall (H_btv_btv_empty : forall x, In x (btv t) -> ~ In x (tv s)), (* This says disjoint! *)
     forall (H_btv_ftv_empty : forall x, In x (btv s) -> ~ In x (tv t)),
     GU (@tmapp B s t)
 | GU_lam {B} x A s : 

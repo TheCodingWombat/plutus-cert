@@ -165,12 +165,75 @@ Proof.
 (* ADMIT: See comments *)    
 Admitted.
 
-(* TODO: lemma name? *)
+(* TODO: lemma name?
+
+I Doubt this is true because of substituteTCA in normalise
+
+
+ *)
 Lemma substituteT__normalisation T Tn SubTn X U:
   normalise T Tn ->
   normalise (substituteT X U Tn) SubTn ->
   normalise (substituteT X U T) SubTn.
 Proof.
+  intros Hnorm__T Hnorm__SubTn.
+  generalize dependent Tn.
+  generalize dependent SubTn.
+  induction T; intros.
+  - inversion Hnorm__T; subst.
+    simpl.
+    destr_eqb_eq X t.
+    + (* X = t *)
+      simpl in Hnorm__SubTn.
+      rewrite eqb_refl in Hnorm__SubTn.
+      assumption.
+    + (* X <> t *)
+      simpl in Hnorm__SubTn.
+      apply eqb_neq in H.
+      rewrite H in Hnorm__SubTn.
+      assumption.
+  - inversion Hnorm__T; subst.
+    simpl.
+    simpl in Hnorm__SubTn.
+    inversion Hnorm__SubTn; subst.
+    constructor; auto.
+    + eapply IHT1; eauto.
+    + eapply IHT2; eauto.
+  - admit.
+  - admit.
+  - admit.
+  - admit.
+  - (* Ty_App *)
+    simpl.
+    inversion Hnorm__T; subst.
+    + (* N_BetaReduce *)
+      simpl.
+      remember H1 as H1'. clear HeqH1'.
+      assert (exists SubT1n, normalise (substituteT X U (Ty_Lam bX K T1n)) (Ty_Lam bX K SubT1n)) as [SubT1n HSubLamN].
+      {
+        admit.
+      }
+      assert (exists SubT2n, normalise (substituteT X U T2n) SubT2n) as [SubT2n HSubT2n].
+      {
+        admit.
+      }
+
+      eapply IHT1 in H1; eauto.
+      econstructor; eauto.
+      (* subT X U T1n ==> SubT1n
+        
+
+        SubCA bX T2n T1n ==> Tn
+
+        Sub X U Tn ==> SubTn
+
+        ADMIT: Not so clear to me yet.
+      *)
+      admit.
+    + (* N_App *)
+      simpl.
+      simpl in Hnorm__SubTn.
+      (* ADMIT: I DONT KNOW *)
 
 Admitted.
 
@@ -187,12 +250,27 @@ Local Open Scope list_scope.
 
 Definition KB := Kind_Base.
 
+Locate ":[".
+
 (* X is free in t *)
 Definition t := TyInst (TyAbs "X0" KB (TyAbs "X" KB (Var "x"))) (Ty_Var "X").
 Definition T := Ty_Forall (fresh "X0" (Ty_Var "X") <{ ℤ }>) KB <{ ℤ }>.
 
+(*
+  IDEA Jacco: rename approach in TyForall?
+*)
+
+
+(*
+  Λ (X0: * ) (Λ (X :: * ) 3) @ X : SubstitueTCA X0 X  (∀ (X :: * ) Int)
+*)
+
 Definition U := Ty_Builtin DefaultUniBool.
 
+(* THe problem is that here U gets substituted in the type immediately,
+so then no ftvs are in the instantiated type anymore, so then no fresh variable
+is gnerated
+*)
 Definition substA_t : term :=
   <{ :[ "X" := U ] t }>.
 
@@ -237,7 +315,132 @@ Proof.
   constructor.
   constructor.
 Admitted.
-  
+
+(* We also know U is closed, but do not need it yet *)
+Lemma commute_substituteT :
+  forall X U V T,
+    substituteT X U (substituteT X V T) = substituteT X (substituteT X U V) T.
+Proof.
+  intros X U V T.
+  induction T.
+  - simpl.
+    destr_eqb_eq X t0; auto.
+    simpl.
+    apply eqb_neq in H; rewrite H; auto.
+  - simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - simpl.
+    destr_eqb_eq X b; auto.
+    simpl.
+    rewrite String.eqb_refl; auto.
+    simpl.
+    apply eqb_neq in H; rewrite H; auto.
+    f_equal.
+    apply IHT; auto.
+  - simpl. reflexivity.
+  - simpl.
+    destr_eqb_eq X b; auto.
+    simpl.
+    rewrite String.eqb_refl; auto.
+    simpl.
+    apply eqb_neq in H; rewrite H; auto.
+    f_equal.
+    apply IHT; auto.
+  - simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - (* ADMIT: Ty_SOP unimplemented *)  
+Admitted.
+
+Lemma substituteT_vacuous_closed X U T :
+    Ty.closed T ->
+    substituteT X U T = T.
+Admitted.
+
+(* NOTE: commute_sub_naive *)
+Lemma commute_substituteT_2 :
+  forall X X0 U V T,
+    X <> X0 -> (* TODO: necessary? Maybe without it this implies commute_substituteT *)
+    Ty.closed U ->
+    (* TODO: Required: binders in T are not free in V? *)
+    substituteT X0 (substituteT X U V) (substituteT X U T) = 
+      substituteT X U (substituteT X0 V T).
+Proof.
+  intros X X0 U V T Hneq Uclosed.
+  induction T.
+  - simpl.
+    destr_eqb_eq X t0; auto.
+    + simpl.
+      apply eqb_neq in Hneq.
+      rewrite String.eqb_sym in Hneq; rewrite Hneq.
+      simpl.
+      rewrite String.eqb_refl; auto.
+      apply substituteT_vacuous_closed; auto.
+    + simpl.
+      destr_eqb_eq X0 t0; auto.
+      simpl.
+      apply eqb_neq in H; rewrite H. reflexivity.
+  - simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - simpl.
+    destr_eqb_eq X b; destr_eqb_eq X0 b; auto.
+    + contradiction Hneq. reflexivity.
+    + simpl.
+      rewrite String.eqb_refl; auto.
+      apply eqb_neq in H; rewrite H.
+      f_equal.
+      (* What if b in V? *)
+      admit.
+    + simpl.
+      rewrite String.eqb_refl; auto.
+      apply eqb_neq in H; rewrite H.
+      f_equal.
+    + simpl.
+      apply eqb_neq in H; rewrite H.
+      apply eqb_neq in H0; rewrite H0.
+      rewrite IHT.
+      reflexivity.
+  - simpl. reflexivity.
+  - (* Ty_Lam *)
+    simpl.
+    destr_eqb_eq X b; destr_eqb_eq X0 b; auto.
+    + contradiction Hneq. reflexivity.
+    + simpl.
+      rewrite String.eqb_refl; auto.
+      apply eqb_neq in H; rewrite H.
+      f_equal.
+      (* What if b in V? *)
+      admit.
+    + simpl.
+      rewrite String.eqb_refl; auto.
+      apply eqb_neq in H; rewrite H.
+      f_equal.
+    + simpl.
+      apply eqb_neq in H; rewrite H.
+      apply eqb_neq in H0; rewrite H0.
+      rewrite IHT.
+      reflexivity.
+  - (* Ty_App *)
+    simpl.
+    f_equal.
+    apply IHT1; auto.
+    apply IHT2; auto.
+  - 
+  (* ADMIT: Ty_SOP unimplemented *)
+Admitted.
 
 Definition P_Binding (b : binding) : Prop :=
   forall Delta Gamma rec X K U,
@@ -250,6 +453,7 @@ Definition P_Binding (b : binding) : Prop :=
   P_Binding
   : core.
 
+
 Theorem substA_preserves_typing :
   forall t, P_Term t.
 Proof with (eauto using substituteT_preserves_kinding with typing).
@@ -258,10 +462,34 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
   all: unfold P_Term.
   all: try (intros Delta Gamma X K U T Tn Htyp__t Hkind__U Hnorm__Tn).
   all: unfold P_Binding.
-  all: try (intros Delta Gamma X K U Htyp__b Hkind__U).
+  all: try (intros Delta Gamma rec X K U Htyp__b Hkind__U).
   all: try (inversion Htyp__t; subst).
-  - admit.
-  - admit.
+  - (* Let (NonRec) *)
+    simpl.
+    econstructor; eauto.
+    + admit.
+    + (* probably *) admit.
+    + 
+       destruct (existsb (eqb X) (btvbs bs)).
+      * (* X in btvbs bs *)
+        simpl.
+        (* Everything gets renamed accordingly, should hold?*)
+        admit.
+      * (* X not in btvbs bs *)
+        assert (@substA_bnr' substA_b X U bs = bs).
+        {
+          (* ADMIT: I think this is true, but not sure yet *)
+          admit.
+        }
+        rewrite H1.
+        (* hmm. Then X should also not be appearing in Gamma *)
+        unfold P_Term in H0.
+        (* eapply H0. TODO: Cannot apply it because bsGn is in front of the gsubst. we can probably drag it inside *)
+        admit.
+    + (* I think the key here is that there is no longer an X in substituteT X U T. *)
+      admit.
+  - (* Let Rec *)
+    admit.
   - (* Var *)
     simpl.
     econstructor.
@@ -352,8 +580,16 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
     constructor.
   - (* Builtin *)
     simpl.
-    (* ADMIT: UHM, probably not difficult? *)
-    admit.
+    (* Probably: 
+    ADMIT:
+      closed (lookupBuildtinTy d)
+        Then closed T, but also lookupBuiltinTy d = T.
+        Then substituteT X U T = T.
+        Then normalise T Tn => T = Tn.
+     *)
+     assert (T = Tn) by admit.
+     subst.
+     econstructor; eauto.
   - (* TyInst *)
     simpl.
     unfold P_Term in H.
@@ -406,9 +642,37 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
           It is not.
         *)
 
+        assert (normalise
+          (substituteTCA X0 (substituteT X0 U t1) T1n)
+          (substituteT X0 U (substituteTCA X0 t1 T1n))
+            = normalise
+          (substituteT X0 (substituteT X0 U t1) T1n)
+          (substituteT X0 U (substituteT X0 t1 T1n))
+        ).
+        {        (* 
+          ADMIT: What if we have substituteT instead of substituteTCA, is it true then?
+          Yes.
+        *)
+          admit.
+        }
+        rewrite H0.
+        erewrite commute_substituteT.
+        (* ADMIT: They are identical, but the latter does not need to be normal yet. I think that is
+            solved by not doing all thsoe admits above
+          *)
+
 
         admit.
     + (* X <> X0 *)
+      assert (exists subT1n, normalise (substituteT X U t1) subT1n) as [subT1n HsubT1n].
+        {
+          eapply strong_normalisation; eauto.
+          apply has_type__basekinded in H2.
+          inversion H2; subst.
+          eauto.
+          eapply substituteT_preserves_kinding; eauto.
+      }
+
       assert (exists SubT1nn, normalise (substituteT X U T1n) SubT1nn) as [SubT1nn HT1nn].
       {
         eapply strong_normalisation; eauto.
@@ -426,25 +690,144 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
         apply eqb_neq in H0.
         rewrite H0.
         constructor; eauto.
-      * admit.
-      * admit.
-      * admit.
+      * eapply substituteT_preserves_kinding; eauto.
+      * eauto.
+      * (* ADMIT: Just like above for now equating all the normal stuff: *)
+        assert (t1 = T2n) by admit; subst.
+        assert (substituteT X U T2n = subT1n) by admit; subst.
+        assert (substituteT X U T1n = SubT1nn) by admit; subst.
+        assert (substituteTCA X0 T2n T1n = T) by admit; subst.
+        clear HT1nn HsubT1n H8 H6.
+        assert (substituteT X U (substituteTCA X0 T2n T1n) = Tn) by admit; subst.
+        clear Hnorm__Tn.
+
+        (* Aha, so it is not the same as above, X <> X0 *)
+
+        (* We want to call commute_substituteT_2 with V := T2n, and with T := T1n
+            And we need: btv in T not free in V
+              That is like exactly NC T [? -> V] from the alpha stuff
+            
+          If we change the TyInst rule as I suggested to Jacco:
+          typechecking the rhs of TyInst with smaller Delta,
+            then we have this assumption I think
+        *)
+         admit.
   - (* Error *)
+    (* ADMIT: Probably we do not need to do this for Error since we are not doing preservation for non-error*)
     admit.
   - (* IWrap *)
-    admit.
+    simpl.
+    simpl in Hnorm__Tn.
+    inversion Hnorm__Tn; subst.
+    assert (exists subTXUT0n, normalise (substituteT X U T0n) subTXUT0n) as [subTXUT0n HsubTXUT0n].
+    {
+      eapply strong_normalisation; eauto.
+      admit.
+    }
+
+    eapply T_IWrap with (T0n := subTXUT0n).
+    + eapply substituteT_preserves_kinding; eauto.
+    + eapply substituteT__normalisation; eauto.
+    + eapply substituteT_preserves_kinding; eauto.
+    + eapply substituteT__normalisation; eauto.
+    + (* ADMIT: not sure yet, but probably some more convoluted case of substituteT__normalisation 
+      *)
+      admit.
+    + eapply H; eauto.
   - (* Unwrap *)
-    admit.
-  - (* Constr *)
-    admit.
-  - (* Case *)
+    assert (exists sub_XU_Tn0, normalise (substituteT X U Tn0) sub_XU_Tn0) as [sub_XU_Tn0 Hsub_XU_Tn0].
+    {
+      eapply strong_normalisation; eauto.
+      eapply substituteT_preserves_kinding; eauto.
+    }
+    remember H1 as H1'. clear HeqH1'.
+    eapply has_type__basekinded in H1'; eauto.
+    inversion H1'; subst.
+    assert (exists sub_XU_Fn, normalise (substituteT X U Fn) sub_XU_Fn) as [sub_XU_Fn Hsub_XU_Fn].
+    {
+      eapply strong_normalisation; eauto.
+      eapply substituteT_preserves_kinding; eauto.
+    }
+    simpl.
+    eapply T_Unwrap.
+    + eapply H; eauto.
+      simpl.
+      constructor; eauto.
+    + admit.
+    + (* ADMIT: Not sure yet *)
     admit.
   - (* TermBind *)
-    admit.
+    simpl.
+    destruct v.
+    inversion Htyp__b; subst.
+    assert (exists sub_XU_Tn, normalise (substituteT X U t1) sub_XU_Tn) as [sub_XU_Tn H_sub_XU_Tn].
+    {
+      eapply strong_normalisation; eauto.
+      eapply substituteT_preserves_kinding; eauto.
+    }
+    econstructor.
+    + eapply substituteT_preserves_kinding; eauto.
+    + eauto.
+    + eapply H; eauto.
+      (* ADMIT: 
+         
+         norm t1 Tn
+         norm (sub X U t1) sub_XU_Tn
+         =>
+         norm (sub X U Tn) sub_XU_Tn 
+      *)
+      admit.
   - (* TypeBind *)
-    admit.
+    simpl.
+    inversion Htyp__b; subst.
+    econstructor.
+    eapply substituteT_preserves_kinding; eauto.
   - (* DatatypeBind *)
-    admit.
+    simpl.
+    destruct dtd.
+    inversion Htyp__b; subst.
+    inversion H0; subst; clear H0.
+    simpl in *.
+    destruct rec.
+    + (* NonRec *)
+
+      (* ADMIT: No time to finish this*)
+      admit.
+    + (* Rec *)
+      econstructor; eauto.
+      * admit.
+      * intros.
+        simpl.
+        (* [X := U]cs cs must contain Vardecls*)
+        induction cs; [inversion H|].
+        simpl in H.
+        destruct a.
+        destruct H.
+        -- subst.
+           simpl.
+           econstructor.
+           3: eauto.
+           ++ admit.
+           ++ admit.
+        -- eapply IHcs; eauto.
+           ++ (* uhm*) admit.
+           ++ (* NODUP smaller *) admit.
+           ++ (* hmmm, not getting closer *)
+            admit.
+      * simpl.
+        (* ADMIT: How can this be true? We must know XK already in Delta?
+          This seems to be problematic in the special case where the variable we are substituting (X)
+          is equal to the datatype name.
+
+          Probably indeed the datatype name should not be renamed (it is like a tyabs binder), but
+          how to reconcile XK = X?
+
+          We should know from bindings_well_formed_rec that X is already in Delta
+          But even then, this creates weird things, for instance if K is of a different kind then what
+          it has in Delta.
+        *)
+        admit.
+    
   
 (* ADMIT: I had no time to finish this. Should follow from uniqueness property, amongst others. *)
 Admitted.
