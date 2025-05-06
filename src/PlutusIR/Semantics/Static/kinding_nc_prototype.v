@@ -1,7 +1,6 @@
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
 
-From PlutusCert Require Import Util.List.
 Import ListNotations.
 Local Open Scope list_scope.
 Local Open Scope string_scope.
@@ -34,6 +33,13 @@ Fixpoint drop_btv (Δ : list (string * kind)) (btvs : list string) : list (strin
                         ((X, K)::(drop_btv Δ' btvs))
     | nil => nil
     end.
+
+
+Fixpoint lookup {X:Type} (k : string) (l : list (string * X)) : option X :=
+  match l with
+  | nil => None
+  | (j,x) :: l' => if j =? k then Datatypes.Some x else lookup k l'
+  end.
 
 (** Kinding of types *)
 Reserved Notation "Δ '|-*' T ':' K" (at level 40, T at level 0, K at level 0).
@@ -88,7 +94,11 @@ Inductive step : ty -> ty -> Set :=
         step T1 T2 -> step (Ty_Lam bX K T1) (Ty_Lam bX K T2)
     .
 
-(* Even after stepping, the type is still typeable in the more restrictive TyApp rule*)
+(* Even after stepping, the type is still typeable in the more restrictive TyApp rule
+  meaning that even after stepping, when stepping again, we will again not have capture
+  i.e. this is the property that GU implies that is preserved
+  under normalisation/betaReduction.
+*)
 Theorem preservation T1 T2 Δ K :
     Δ |-* T1 : K -> step T1 T2 -> Δ |-* T2 : K.
 Proof.
@@ -98,7 +108,7 @@ Proof.
     induction Hstep; intros.
     - inversion Hwk; subst.
       inversion H2; subst.
-      (* By weakening Δ |-* T : K1 then by substituteT_preserves_kinding (should also hold for open U, see substituteTCA_preserves_kinding) *)
+      (* By weakening we have Δ |-* T : K1 then by substituteT_preserves_kinding (should also hold for open U, see substituteTCA_preserves_kinding) *)
       admit.
     - inversion Hwk; subst.
       apply K_App with (K1 := K1).
@@ -109,6 +119,7 @@ Proof.
 
             Hence 
                inclusion (drop_btv Δ (btv s1)) (drop_btv Δ (btv s2))
+            reasoning: btv s1 is bigger than btv s2: we remove more, hence lookup in the first implies still lookup in the second, which has every element in the first, and possibly more
 
             But what about shadowing??? I fear the existence of an X that becomes visible, but then that X was not necessary to begin with. So no issue.
 
