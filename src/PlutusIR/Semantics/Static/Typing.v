@@ -560,6 +560,10 @@ Proof.
   reflexivity.
 Qed.
 
+Definition drop_btv (Δ : list (string * kind)) (t : ty) := Δ.
+
+Opaque drop_btv.
+
 Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty -> Prop :=
   (* Simply typed lambda caclulus *)
   | T_Var : forall Γ Δ x T Tn,
@@ -582,7 +586,7 @@ Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty ->
       Δ ,, Γ |-+ (TyAbs X K t) : (Ty_Forall X K Tn)
   | T_TyInst : forall Δ Γ t1 T2 T1n X K2 T0n T2n,
       Δ ,, Γ |-+ t1 : (Ty_Forall X K2 T1n) ->
-      Δ |-* T2 : K2 ->
+      (drop_btv Δ T1n) |-* T2 : K2 ->
       normalise T2 T2n ->
       normalise (substituteTCA X T2n T1n) T0n ->
       Δ ,, Γ |-+ (TyInst t1 T2) : T0n

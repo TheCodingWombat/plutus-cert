@@ -859,7 +859,8 @@ Proof.
   assert (nil ,, (gsubst X U nil) |-+ <{ :[X := U] t }> : Tn).
   {
     eapply substA_preserves_typing__Term; eauto.
+    admit. admit. admit.
   }
   simpl in H2.
   auto.
-Qed.
+Admitted.

@@ -7,6 +7,7 @@ Require Import PlutusCert.PlutusIR.Semantics.SemanticEquivalence.LogicalRelation
 Require Import PlutusCert.PlutusIR.Semantics.SemanticEquivalence.LogicalRelation.RG.Helpers.
 Require Import PlutusCert.PlutusIR.Semantics.SemanticEquivalence.LogicalRelation.RV.Helpers.
 Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.
+Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.AnnotationSubstitution.
 Require Import PlutusCert.Util.Map.Mupdate.
 Require Import PlutusCert.Util.List.
 

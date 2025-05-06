@@ -26,7 +26,7 @@ Admitted.
 
 
 Lemma compatibility_TyInst: forall Delta Gamma e e' X K2 T1n T2 T2n T0n,
-    Delta |-* T2 : K2 ->
+    (drop_btv Delta T1n) |-* T2 : K2 ->
     normalise T2 T2n ->
     normalise (substituteTCA X T2n T1n) T0n ->
     LR_logically_approximate Delta Gamma e e' (Ty_Forall X K2 T1n) ->
