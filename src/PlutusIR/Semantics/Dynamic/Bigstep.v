@@ -48,7 +48,7 @@ Inductive eval : term -> term -> nat -> Prop :=
   | E_TyInst : forall j t1 T2 X K t0 v0 j1 j0,
       j = j1 + 1 + j0 ->
       t1 =[j1]=> TyAbs X K t0 ->
-      <{ :[X := T2] t0 }> =[j0]=> v0 ->
+      (:[X := T2] t0 ) =[j0]=> v0 ->
       TyInst t1 T2 =[j]=> v0
   (** Recursive types *)
   | E_IWrap : forall F T t0 v0 j0,

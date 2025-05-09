@@ -50,6 +50,7 @@ Proof with auto.
       rewrite n...
 Qed.
 
+
 (* By drop_ty_var, X not in Ty.ftv T*)
 Lemma gsubst__drop_ty_var__substituteT Gamma x X U T :
     Ty.closed U ->
@@ -492,7 +493,13 @@ Proof with (eauto using substituteT_preserves_kinding with typing).
     admit.
   - (* Var *)
     simpl.
-    econstructor.
+    (*
+      lookup s Gamma = Some T0   (* T_Var*)
+      normalise T0 T             (* T_Var *)
+
+      normalise (substituteT X U T) Tn  (* P_Term *)
+    *)
+    apply T_Var with (T := (substituteT X U T0)).
     + eapply gsubst__substituteT; eauto.
     + eapply substituteT_preserves_kinding; eauto.
     + eapply substituteT__normalisation; eauto.

@@ -1,6 +1,8 @@
 From Coq Require Import Lists.List.
 From Coq Require Import Strings.String.
 
+From PlutusCert Require Import Util.List.
+
 Import ListNotations.
 Local Open Scope list_scope.
 Local Open Scope string_scope.
@@ -80,6 +82,67 @@ Fixpoint substituteT (X : string) (U T : ty) : ty :=
     Ty_App (substituteT X U T1) (substituteT X U T2)
   end.
 
+(* HMM, I do not seem to use this for open U? *)
+Theorem substituteT_preserves_kinding : forall T Delta X K U L,
+  ((X, L) :: Delta) |-* T : K ->
+  (drop_btv Delta (btv T)) |-* U : L -> (* This lemma is used where X was in a lambda binder: hence, by the new typing rule, it may not occur free in U*)
+  Delta |-* (substituteT X U T) : K.
+Proof with eauto.
+  induction T.
+  all: intros Delta X K U L Hkind__T HHkind__U.
+  all: simpl.
+  all: inversion Hkind__T; subst...
+  - (* Ty_Var *)
+    destruct (X =? s)%string eqn:Heqb.
+    + (* X = Y *)
+      apply eqb_eq in Heqb as Heq.
+      subst.
+      assert (K = L).
+      {
+        simpl in H1.
+        rewrite Heqb in H1.
+        inversion H1; auto.
+      }
+      subst.
+      (* ADMIT: weakening *)
+      admit.
+    + (* X <> Y *)
+      apply eqb_neq in Heqb as Hneq.
+      rewrite lookup_neq in H1...
+      constructor.
+      assumption.
+  - (* Ty_Lam *)
+    rename s into bX.
+    destruct (X =? bX)%string eqn:Heqb.
+    + (* X = bX *)
+      apply eqb_eq in Heqb as Heq.
+      subst.
+      apply K_Lam...
+      (* ADMIT: Weakening shadow *)
+      admit.
+    + (* X <> bX *)
+      apply eqb_neq in Heqb as Hneq.
+      apply K_Lam.
+      eapply IHT...
+      * (* ADMIT: Weakening cons permute *)
+        admit.
+      * simpl.
+        destruct (in_dec string_dec bX (btv T)); eauto.
+        -- (* ADMIT: Weakening: now bX could be added to it, but it cannot shadow*)
+           admit.
+        -- (* U is well_kinded without bX, so we can add it without shadowing *)
+           admit.
+  - (* Ty_App *)
+    apply K_App with (K1 := K1).
+    + eapply IHT1...
+      admit.
+    + eapply IHT2...
+      * (* If U contains btvs free in T2, then it all fails *)
+        admit.
+      * admit.
+    
+Admitted.
+
 (* Usual step relation that has no normality restrictions, 
     but with naive subsitutions.
 *)
@@ -93,6 +156,35 @@ Inductive step : ty -> ty -> Set :=
     | step_abs bX K T1 T2 :
         step T1 T2 -> step (Ty_Lam bX K T1) (Ty_Lam bX K T2)
     .
+
+Definition t1 := Ty_App (Ty_Lam "x" (Kind_Arrow Kind_Base Kind_Base) (Ty_Lam "y" Kind_Base (Ty_App (Ty_Var "x") (Ty_Var "y")))) (Ty_Lam "y" Kind_Base (Ty_Var "y")).
+
+Definition t2 := (Ty_Lam "y" Kind_Base (Ty_App (Ty_Lam "y" Kind_Base (Ty_Var "y")) (Ty_Var "y"))).
+
+Lemma t1_wk  : [] |-* t1 : (Kind_Arrow Kind_Base Kind_Base).
+Proof.
+  unfold t1.
+  repeat econstructor.
+Qed.
+
+Lemma t1_steps_t2 : step t1 t2.
+Proof.
+  unfold t1, t2.
+  repeat constructor.
+Qed.
+
+Lemma t2_wk : [] |-* t2 : (Kind_Arrow Kind_Base Kind_Base) -> False.
+Proof.
+  unfold t2.
+  intros.
+  inversion H; subst.
+  inversion H2; subst.
+  simpl in H6.
+  inversion H6; subst.
+  inversion H3; subst.
+Qed.
+
+  
 
 (* Even after stepping, the type is still typeable in the more restrictive TyApp rule
   meaning that even after stepping, when stepping again, we will again not have capture
@@ -108,8 +200,12 @@ Proof.
     induction Hstep; intros.
     - inversion Hwk; subst.
       inversion H2; subst.
-      (* By weakening we have Δ |-* T : K1 then by substituteT_preserves_kinding (should also hold for open U, see substituteTCA_preserves_kinding) *)
-      admit.
+      assert ((drop_btv Δ (btv S)) |-* T : K1).
+      {
+        (* Weakening, we coulud potentially add X, but it cannot be free in T by H4*)
+        admit.
+      }
+      eapply substituteT_preserves_kinding; eauto.
     - inversion Hwk; subst.
       apply K_App with (K1 := K1).
       + eapply IHHstep; eauto.

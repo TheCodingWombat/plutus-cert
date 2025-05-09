@@ -21,7 +21,7 @@ Require Import Coq.Program.Equality.
 Theorem eval__type_preservation : forall t T v k,
     nil ,, nil |-+ t : T ->
     t =[k]=> v ->
-    (nil ,, nil |-+ v : T \/ is_error v).
+    (nil ,, nil |-+ v : T).
 Proof.
     intros t T v k Ht Hbs.
     generalize dependent T.
@@ -32,9 +32,11 @@ Proof.
     - (* E_Apply *)
       admit.
     - (* E_TyAbs *)
+      
       left.
       exact Ht.
     - (* E_TyInst *)
+      eapply IHHbs2.
       admit.
     - (* E_IWrap *)
       admit.
