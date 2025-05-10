@@ -212,6 +212,11 @@ Lemma P_ND2'_sym Δ1 Δ2 :
   P_ND2' Δ2 Δ1.
 Admitted.
 
+Lemma P_Dup_Normal_sym Δ1 Δ2 :
+  P_Dup_Normal Δ1 Δ2 ->
+  P_Dup_Normal Δ2 Δ1.
+Admitted.
+
 (* 
 (λX. λY. X Y)   (ΛY. Y)
 *)
@@ -440,8 +445,9 @@ Inductive step : ty -> ty -> Set :=
         step S1 S2 -> step (Ty_App S1 T) (Ty_App S2 T)
     | step_appR S T1 T2 :
         step T1 T2 -> step (Ty_App S T1) (Ty_App S T2)
-    | step_abs bX K T1 T2 :
-        step T1 T2 -> step (Ty_Lam bX K T1) (Ty_Lam bX K T2)
+      (* Not stepping under lambda! *)
+    (* | step_abs bX K T1 T2 :
+        step T1 T2 -> step (Ty_Lam bX K T1) (Ty_Lam bX K T2) *)
     .
 
 Fixpoint count (X : string) (T: ty) : nat :=
@@ -888,11 +894,21 @@ Proof.
         Now, this is only problematic if there is then some binder Y in ΔU, that maps to something else
           than Y. But that is not allowed by P_ND2' ΔU Δ2.
 
-        Hmm. But do we have some sort of no_dup of binders?
+        Hmm. But do we have some sort of no_dup of binders? Yes!
     *)
 
     admit.
-  - 
+  - (*
+    T1 = λZ. X Z.   
+    T2 = λZ. X Z.
+
+    sub X (λV. V) T1 = λZ. (λV. V) Z
+    sub X (λV. V) T2 = λZ. (λV. V) Z
+
+    Then they are no longer Normal!
+
+    So that is also not true...
+    *)
       
       
         (* Unsure*) admit.
@@ -907,12 +923,12 @@ Lemma P_BF_step Δ1 Δ1' Ξ Γ T1 T1' K :
   P_BF Δ1' Γ.
 Admitted.
 
-Lemma P_ND2'_step Δ1 Δ2 Δ2' Ξ Γ T2 T2' K2 K2' :
+Lemma P_ND2'_step Δ1 Δ2 Δ2' T2 T2' K2 K2' :
   P_ND2' Δ1 Δ2 ->
   P_Dup_Normal Δ1 Δ2 ->
   step T2 T2' ->
-  Ξ ,, Δ2 : Γ ⊢ T2 # K2 ->
-  Ξ ,, Δ2' : Γ ⊢ T2' # K2' ->
+  [] ,, Δ2 : [] ⊢ T2 # K2 ->
+  [] ,, Δ2' : [] ⊢ T2' # K2' ->
   (P_ND2' Δ1 Δ2' /\ P_Dup_Normal Δ1 Δ2').
 Proof.
   intros PND_Δ2 PDupN_Δ2 Hstep Hwk_T2 Hwk_T2'.
@@ -962,6 +978,10 @@ Proof.
       We only start substituting (and hence doubling, once nothign can be substituted 
       in this term anymore (a λv surround it can not exist: it cannot have been in Δ1
       by BF).
+
+      HMM, but what if they are not only normal, but also closed...
+      - Then stuff cannot be substituted into it.
+      - That still useses the Dup_Normal property.
 
     )
     *)
@@ -1141,19 +1161,17 @@ Proof with eauto.
 Admitted.
 
 (* This is the property that we want to prove: that the step relation preserves the typing property *)
-Theorem preservation' Ξ T1 T2 Δ Γ K :
-    Ξ ,, Δ : Γ ⊢ T1 # K -> step T1 T2 -> exists Δ', Ξ ,, Δ' : Γ ⊢ T2 # K.
+Theorem preservation' T1 T2 Δ K :
+    [] ,, Δ : [] ⊢ T1 # K -> step T1 T2 -> exists Δ', [] ,, Δ' : [] ⊢ T2 # K.
 Proof.
     intros Hnd Hstep.
     generalize dependent Δ.
-    generalize dependent Γ.
     generalize dependent K.
-    generalize dependent Ξ.
     induction Hstep; intros.
     - inversion Hnd; subst; clear Hnd.
       inversion H1; subst; clear H1.
 
-      assert (Ξ ,, (dsubst Δ2 X T S) : Γ ⊢ (substituteT X T S) # K0).
+      assert ([] ,, (dsubst Δ2 X T S) : [] ⊢ (substituteT X T S) # K0).
       {
         eapply substituteT_preserves_NoDup with (Δ1 := Δ); eauto.
         + eapply P_ND2'_cons; eauto.
@@ -1161,19 +1179,27 @@ Proof.
         + unfold P_BF.
           intros. simpl.
           intuition.
-          subst.
-          unfold P_BF in H13.
-          specialize (H13 X0 H).
-          simpl in H13.
-          intuition.
       }
       exists (dsubst Δ2 X T S)%list.
       assumption.
       
-    - (* Analogous to below *)
-      admit.
+    - inversion Hnd; subst; clear Hnd.
+      specialize (IHHstep (Kind_Arrow K1 K) Δ1) as [Δ1' Hnd1']; eauto.
+      exists (Δ1' ++ Δ2)%list.
+      apply ND_App with (K1 := K1); eauto.
+      + apply P_ND2'_sym.
+        eapply P_ND2'_step; eauto.
+        apply P_ND2'_sym; eauto.
+        apply P_Dup_Normal_sym; eauto.
+      + apply P_Dup_Normal_sym; eauto.
+        eapply P_ND2'_step; eauto.
+        apply P_ND2'_sym; eauto.
+        apply P_Dup_Normal_sym; eauto.
+      + unfold P_BF.
+        intros.
+        inversion H.
     - inversion Hnd; subst.
-      specialize (IHHstep Ξ K1 Γ Δ2 H2) as [Δ2' Hnd2'].
+      specialize (IHHstep K1 Δ2 H2) as [Δ2' Hnd2'].
       exists (Δ1 ++ Δ2')%list.
       apply ND_App with (K1 := K1); auto.
       + eapply P_ND2'_step with (Δ2 := Δ2) (K2' := K1) (K2 := K1); eauto.
@@ -1181,47 +1207,4 @@ Proof.
       + apply P_BF_App in H9 as [H9 H10].
         apply P_BF_App; split; auto.
         eapply P_BF_step; eauto.
-    - inversion Hnd; subst.
-      specialize (IHHstep ((bX, K)::Ξ) K2 (bX :: Γ) Δ0 H6) as [Δ0' Hnd0'].
-      exists ((bX, (K, T2))::Δ0')%list.
-      constructor; auto.
-      inversion Hnd0'; subst.
-      + unfold P_BF. intros. unfold P_BF in H7.
-        specialize (H7 X0 H1).
-        simpl.
-        simpl in H7.
-        intuition.
-      + unfold P_BF. intros.
-        simpl. intuition.
-        -- subst.
-            unfold P_BF in H7.
-            specialize (H7 X0 H1).
-            simpl in H7.
-            intuition.
-         -- subst.
-            unfold P_BF in H0.
-            specialize (H0 X0).
-            assert (In X0 (bX :: Γ)).
-            {
-              simpl. intuition.
-            }
-            specialize (H0 H2).
-            simpl in H0.
-            intuition.
-         -- unfold P_BF in H0.
-            contradiction H0 with (X := X0).
-            apply in_cons. assumption.
-            simpl. right. auto.
-      + unfold P_BF.
-        intros.
-        simpl.
-        intuition; subst.
-        eapply BF_propertyΔ in Hnd; eauto.
-        simpl in Hnd. intuition.
-        rewrite map_app in H8.
-        apply in_app_or in H8 as [H8 | H8].
-        * eapply BF_propertyΔ in H; eauto.
-          apply in_cons. assumption.
-        * eapply BF_propertyΔ in H0; eauto.
-          apply in_cons. assumption.
-Admitted.
+Qed.
