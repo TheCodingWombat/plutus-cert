@@ -305,7 +305,7 @@ Proof with eauto.
   - (* TyAbs *)
     simpl.
     inversion H0; subst.
-    apply T_TyAbs.
+    apply T_TyAbs; auto.
     unfold P_Term in H.
     eapply H; eauto.
     (* Suppose s not in U, then done by unfold.

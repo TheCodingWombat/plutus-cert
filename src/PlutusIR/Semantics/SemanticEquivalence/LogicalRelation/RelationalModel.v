@@ -114,17 +114,17 @@ Equations? RC (k : nat) (T : ty) (rho : tymapping) (e e' : term) : Prop by wf k 
 
             (* RV for universal types *)
             | Ty_Forall X K Tn =>
-                exists e_body e'_body,
+                exists e_body e'_body Y Z,
                   (* Determine the shape of e_f and e_f' *)
-                  e_f = TyAbs X K e_body /\
-                  e'_f = TyAbs X K e'_body /\
+                  e_f = TyAbs Y K e_body /\
+                  e'_f = TyAbs Z K e'_body /\
                   (* Instantiational equivalence *)
                   forall T1 T2 Chi,
                     [] |-* T1 : K ->
                     [] |-* T2 : K ->
                     Rel T1 T2 Chi ->
                     forall i (Hlt_i : i < k - j),
-                      RC i Tn ((X, (Chi, T1, T2)) :: rho) <{ :[X := T1] e_body }> <{ :[X := T2] e'_body }>
+                      RC i Tn ((X, (Chi, T1, T2)) :: rho) <{ :[Y := T1] e_body }> <{ :[Z := T2] e'_body }>
             end
           )
         ) \/ (

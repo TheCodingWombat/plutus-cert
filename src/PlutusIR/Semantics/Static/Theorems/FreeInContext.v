@@ -100,7 +100,8 @@ Module Term.
       {
         inversion Hafi; subst; auto.
       }
-      specialize (H0 x0 H1) as [T' Hlookup].
+      specialize (H0 x0 H3) as [T' Hlookup].
+      eapply drop_ty_var__lookup_some in Hlookup as [T'' Hl'']; eauto.
       eapply drop_ty_var__lookup_some; eauto.
     - (* T_Let *)
       inversion Hafi.

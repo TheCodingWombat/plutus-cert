@@ -244,17 +244,17 @@ Lemma RV_condition : forall k T rho v v',
 
         (* RV for universal types *)
         | Ty_Forall bX K T =>
-            exists e_body e'_body,
+            exists e_body e'_body bY bZ,
               (* Determine the shape of v and v' *)
-              v = TyAbs bX K e_body /\
-              v' = TyAbs bX K e'_body /\
+              v = TyAbs bY K e_body /\
+              v' = TyAbs bZ K e'_body /\
               (* Instantiational equivalence *)
               forall T1 T2 Chi,
                 [] |-* T1 : K ->
                 [] |-* T2 : K ->
                 Rel T1 T2 Chi ->
                 forall i (Hlt_i : i < k),
-                  RC i T ((bX, (Chi, T1, T2)) :: rho) <{ :[bX := T1] e_body }> <{ :[bX := T2] e'_body }>
+                  RC i T ((bX, (Chi, T1, T2)) :: rho) <{ :[bY := T1] e_body }> <{ :[bZ := T2] e'_body }>
         end
       ) \/ (
         is_error v /\
@@ -368,17 +368,17 @@ Corollary RV_instantiational_extensionality : forall k bX K T rho v v',
     (
       ~ is_error v /\
       ~ is_error v' /\
-      exists e_body e'_body,
+      exists e_body e'_body bY bZ,
         (* Determine the shape of v and v' *)
-        v = TyAbs bX K e_body /\
-        v' = TyAbs bX K e'_body /\
+        v = TyAbs bY K e_body /\
+        v' = TyAbs bZ K e'_body /\
         (* Instantiational equivalence *)
         forall T1 T2 Chi,
           [] |-* T1 : K ->
           [] |-* T2 : K ->
           Rel T1 T2 Chi ->
           forall i (Hlt_i : i < k),
-            RC i T ((bX, (Chi, T1, T2)) :: rho) <{ :[bX := T1] e_body }> <{ :[bX := T2] e'_body }>
+            RC i T ((bX, (Chi, T1, T2)) :: rho) <{ :[bY := T1] e_body }> <{ :[bZ := T2] e'_body }>
     ) \/ (
       is_error v /\
       is_error v'

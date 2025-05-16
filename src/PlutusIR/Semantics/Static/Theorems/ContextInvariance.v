@@ -127,9 +127,10 @@ Module Typing.
         rewrite lookup_neq; auto.
     - (* TyAbs *)
       unfold P_has_type in H0.
-      apply T_TyAbs.
+      apply T_TyAbs; auto.
       apply H0.
       intros.
+      eapply drop_ty_var__inclusion_ftv; eauto.
       eapply drop_ty_var__inclusion_ftv; eauto.
     - (* T_Let *)
       subst.

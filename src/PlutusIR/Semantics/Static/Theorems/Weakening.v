@@ -96,9 +96,10 @@ Module Typing.
     all: try solve [econstructor; subst; eauto using Kinding.weakening, inclusion_cons, inclusion_append].
     - (* TyAbs *)
       unfold P_has_type in H0.
-      apply T_TyAbs.
+      apply T_TyAbs; auto.
       apply H0.
       apply inclusion_cons; auto.
+      eapply drop_ty_var__inclusion_preserving; eauto.
       eapply drop_ty_var__inclusion_preserving; eauto.
     - (* T_Let NonRec*)
       econstructor; subst; eauto using Kinding.weakening, inclusion_cons, inclusion_append.
