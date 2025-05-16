@@ -312,3 +312,14 @@ Proof. derive_complete. Qed.
 
 Instance lt_nat_DecOpt_monotonic n m: DecOptSizeMonotonic (lt_nat n m).
 Proof. derive_mon. Qed.
+
+
+Ltac destruct_match :=
+  match goal with
+  | H : (match ?X with _ => _ end = _ ) |- _ => destruct X eqn:?; try discriminate
+  end.
+
+(* Create cases for x = y and x <> y (where we move from (x =? y) = true -> x = y*)
+Ltac destr_eqb_eq x y :=
+  let H := fresh "H" in
+  destruct (x =? y) eqn:H; [apply String.eqb_eq in H; subst | apply String.eqb_neq in H].

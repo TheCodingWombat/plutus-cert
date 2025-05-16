@@ -1,8 +1,8 @@
 Require Import PlutusCert.PlutusIR.
 Require Import PlutusCert.PlutusIR.Semantics.Static.
 Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.TypeLanguage.Preservation.
-Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.TypeLanguage.StrongNormalisation.
-Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.
+Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.TypeSubstitution.
+Require Import PlutusCert.PlutusIR.Semantics.TypeSafety.SubstitutionPreservesTyping.SubstituteTCA.
 
 Ltac solver := try solve [repeat (econstructor; eauto)].
 

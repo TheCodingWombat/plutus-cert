@@ -548,7 +548,7 @@ Inductive has_type : list (string * kind) -> list (string * ty) -> term -> ty ->
       Δ ,, Γ |-+ t2 : T1n ->
       Δ ,, Γ |-+ (Apply t1 t2) : T2n
   (* Universal types *)
-    | T_TyAbs : forall Δ Γ X K Y t Tn,
+  | T_TyAbs : forall Δ Γ X K Y t Tn,
       ((X, K) :: Δ) ,, (drop_ty_var X (drop_ty_var Y Γ)) |-+ t : Tn ->
       ~ In Y (Ty.ftv Tn) -> (* This is absolutely required. Example Tn = ( X Y), then we cannot substitute X for Y and get an alhpa equivalent term
           (also not capture avoidingly) and*)
