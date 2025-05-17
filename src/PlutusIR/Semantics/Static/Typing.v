@@ -826,7 +826,7 @@ Proof with eauto using normalise_to_normal.
     + inversion H0.
 Qed.
 
-Lemma context_has_type__hole_normal : forall Δ1 Γ1 C Δ Γ T T1,
+(* Lemma context_has_type__hole_normal : forall Δ1 Γ1 C Δ Γ T T1,
     Δ1 ,, Γ1 |- C : (Δ , Γ, T) ↪ T1 ->
     normal_Ty T.
 Proof.
@@ -834,10 +834,10 @@ Proof.
   Require Import Coq.Program.Equality.
   dependent induction Cty.
   all: eauto.
-Qed.
+Qed. *)
 
 
-Lemma context_has_type__fill C t Δ1 Γ1 Δ Γ T T1 :
+(* Lemma context_has_type__fill C t Δ1 Γ1 Δ Γ T T1 :
   Δ1 ,, Γ1 |- C : (Δ, Γ, T) ↪ T1 ->
   Δ ,, Γ |-+ t : T ->
   Δ1 ,, Γ1 |-+ (context_fill C t) : T1.
@@ -845,7 +845,7 @@ Proof.
   intros H_C H_t.
   dependent induction H_C;
   eauto using has_type.
-Qed.
+Qed. *)
 
 Lemma context_comp__has_type
   Δ1 Γ1 C T1
@@ -856,3 +856,114 @@ Lemma context_comp__has_type
     Δ1 ,, Γ1 |- (context_comp C C') : (Δ, Γ, T) ↪ T1
 .
 Admitted.
+
+(* New typing rule is not enough. Same issue with LamAbs*)
+
+Definition LamAbsT := (Ty_App (Ty_Var "γ") (Ty_Lam "α" Kind_Base (Ty_Var "α"))).
+
+Definition t' := (TyAbs "β" Kind_Base
+          (LamAbs "x" LamAbsT (* <-- must be * *)
+            (Var "x"))).
+
+Definition KA := (Kind_Arrow Kind_Base Kind_Base).
+
+Definition t := TyAbs "γ" (Kind_Arrow KA Kind_Base)
+                  (TyAbs "α" Kind_Base
+                    (TyInst t' (Ty_Var "α"))
+                  ).
+
+(* This is what we shall instantiate γ with*)
+Definition MyGam := (Ty_Lam "z" KA Ty_Int).
+
+(* "β" could have been something fresh though!*)
+Lemma t'_well_typed :
+  [("γ", Kind_Arrow KA Kind_Base)],,[("x", Ty_Int)] |-+ t' : 
+      (Ty_Forall "β" Kind_Base (Ty_Fun LamAbsT LamAbsT)).
+
+
+Definition FR := (fresh "β" (Ty_Var "α") (Ty_Var "α")).
+Definition LamAbsT_Fr := (Ty_App (Ty_Var "γ") (Ty_Lam FR Kind_Base (Ty_Var FR))).
+
+Lemma t_well_typed :
+  [],,[] |-+ t : (Ty_Forall "γ" (Kind_Arrow KA Kind_Base)
+                               (Ty_Forall "α" Kind_Base
+                                 (Ty_Fun LamAbsT_Fr LamAbsT_Fr))).
+Proof.
+  unfold t.
+  assert ((Ty_Forall "α" Kind_Base (Ty_Fun LamAbsT_Fr LamAbsT_Fr)) = substituteT "γ" (Ty_Var "γ") ((Ty_Forall "α" Kind_Base (Ty_Fun LamAbsT_Fr LamAbsT_Fr)))) by admit.
+  rewrite H.
+  unfold KA.
+  unfold t'.
+  unfold LamAbsT_Fr.
+
+  eapply T_TyAbs.
+  - {
+  assert ((Ty_Fun (Ty_App (Ty_Var "γ") (Ty_Lam FR Kind_Base (Ty_Var FR)))
+  (Ty_App (Ty_Var "γ") (Ty_Lam FR Kind_Base (Ty_Var FR)))) = substituteT "α" (Ty_Var "α") ((Ty_Fun (Ty_App (Ty_Var "γ") (Ty_Lam FR Kind_Base (Ty_Var FR)))
+  (Ty_App (Ty_Var "γ") (Ty_Lam FR Kind_Base (Ty_Var FR)))))) by admit.
+  rewrite H0.
+  eapply T_TyAbs.
+  {
+  unfold LamAbsT.
+  eapply T_TyInst with (K2 := Kind_Base) (X := "β") (T1n := Ty_Fun LamAbsT LamAbsT).
+  - assert (Ty_Fun LamAbsT LamAbsT = substituteT "β" (Ty_Var "β") (Ty_Fun LamAbsT LamAbsT)) by admit.
+    rewrite H1.
+    eapply T_TyAbs.
+    {
+      constructor.
+      - repeat econstructor.
+      - apply N_TyApp; repeat econstructor.
+      - econstructor. simpl. eauto. unfold LamAbsT. econstructor. constructor. simpl. eauto. repeat econstructor. unfold LamAbsT. apply N_TyApp; repeat econstructor.
+    }
+    admit.
+    admit.
+  - simpl. constructor. simpl. eauto.
+  - eauto.
+  - unfold LamAbsT.
+    autorewrite with substituteTCA.
+    assert ("β" =? "γ" = false) by admit.
+      rewrite H1.
+      assert ("β" =? "α" = false) by admit.
+      rewrite H2.
+    assert (existsb (String.eqb "α") (TypeSubstitution.ftv (Ty_Var "α")) = true) by admit.
+      rewrite H3.
+      assert ("β" =? fresh "β" (Ty_Var "α") (Ty_Var "α") = false) by admit.
+    constructor.
+    + simpl.
+      apply N_TyApp; repeat econstructor.
+      unfold rename.
+      simpl.
+      unfold FR.
+      autorewrite with substituteTCA.
+      
+      rewrite H4.
+      constructor.
+    + simpl.
+      apply N_TyApp; repeat econstructor.
+      simpl.
+      unfold FR.
+      unfold rename.
+      simpl.
+      autorewrite with substituteTCA.
+      rewrite H4.
+      constructor.
+
+  }
+  - admit.
+  - admit.
+
+  }
+  - (* let's assume that we also have the old tyabs rule, this rule is to 
+    prevent capture, but we cannot have it with id subst*) admit.
+  - admit.
+Admitted.
+
+Lemma t_instantiated :
+  [],,[] |-+ (TyInst (TyInst t MyGam) Ty_Int) : (Ty_Fun Ty_Int Ty_Int). 
+Proof.
+  (* Hmmm. Now no ftv in type anymore, so evaluation will go okay.
+    Maybe when we start evaluating and we encounter a tylam, there can never be a neutral type there, because that would mean that
+    there is a ftv in that type, that is either bound in a TyAbs (in which case we wouldnt evaluate its body), or it must be in the context
+    but we only evaluate closed terms, so no context!
+  *)
+
