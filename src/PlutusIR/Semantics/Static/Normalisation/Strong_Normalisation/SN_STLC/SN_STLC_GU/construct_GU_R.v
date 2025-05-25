@@ -1572,5 +1572,3 @@ Hint Resolve BU_lam_id : bu_db.
 
 Create HintDb a_constr_db.
 Hint Resolve a_constr__s_alpha a_constr__t_alpha : a_constr_db.
-
-Search "freshen2".
