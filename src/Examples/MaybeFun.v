@@ -142,4 +142,4 @@ Extract Constant show_Z => "show".
 
 
 Extraction Language Haskell.
-Redirect "maybeFun.hs" Recursive Extraction maybeFun__optimised.
+Redirect "maybeFun.hs" Recursive Extraction maybeFun__dead_code_eliminated.

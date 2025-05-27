@@ -10886,3 +10886,403 @@ maybeFun__optimised =
     (some (ValueOf DefaultUniInteger
       (unsafeCoerce ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
         ((\x -> 2 Prelude.* x) 1))))))))
+
+maybeFun__dead_code_eliminated :: Term
+maybeFun__dead_code_eliminated =
+  Let NonRec ((:) (TermBind Strict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) (Ty_Fun (Ty_Builtin
+    DefaultUniInteger) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Builtin
+    DefaultUniInteger)))) (Builtin AddInteger)) ([])) (Let NonRec ((:)
+    (TermBind NonStrict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Fun (Ty_Builtin
+    DefaultUniInteger) (Ty_Builtin DefaultUniInteger)))) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Builtin DefaultUniInteger) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Builtin DefaultUniInteger) (Let NonRec ((:) (TermBind Strict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) (Ty_Builtin DefaultUniInteger))
+
+      
+    (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))
+    ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))
+    ([])) (Apply (Apply (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1)))))))))))) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))))) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))))))))
+    ([])) (Let Rec ((:) (DatatypeBind (Datatype (TyVarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Kind_Arrow Kind_Base Kind_Base)) ((:) (TyVarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    Kind_Base) ([]))
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    ((:) (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) (Ty_Fun (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))))
+    ((:) (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))))
+    ([]))))) ([])) (Let NonRec ((:) (TermBind NonStrict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Fun (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Ty_Fun (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger))))) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Let NonRec ((:) (TermBind Strict
+    (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger))) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))
+    ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger))) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))))) ([])) (TyInst (Apply (Apply
+    (TyInst (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))
+    (Ty_Forall
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) Kind_Base (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)))) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) (Ty_Builtin DefaultUniInteger)
+    (TyAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) Kind_Base (TyInst (Apply (Apply
+    (TyInst (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))
+    (Ty_Forall
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) Kind_Base (Ty_App (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)))) (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Builtin DefaultUniInteger) (TyAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    Kind_Base (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1)))))))))))) (Ty_Builtin DefaultUniInteger))
+    (Apply (Apply (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))))) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))))))
+    (TyAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    Kind_Base (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)))) (Ty_Forall
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))) Kind_Base (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1))))))))))))))))) (TyAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    Kind_Base (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)))) (Ty_Forall
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    Kind_Base (Ty_Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))))))))))
+    ([])) 
+    
+    (Apply (Apply (TyInst (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Ty_Builtin DefaultUniInteger)) (Apply (Apply (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))
+    (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1)))))))))))) (Ty_Builtin DefaultUniInteger))
+    (Constant0
+    (some (ValueOf DefaultUniInteger
+      (unsafeCoerce ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1) 1))))))))
+    (Apply (TyInst (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) 1)))))))))))) (Ty_Builtin DefaultUniInteger))
+    (Constant0
+    (some (ValueOf DefaultUniInteger
+      (unsafeCoerce ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+        ((\x -> 2 Prelude.* x) 1)))))))))) (Ty_Builtin DefaultUniInteger))
+    (LamAbs
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1)))))))))))
+    (Ty_Builtin DefaultUniInteger) (Var
+    (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
+      ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x) 1))))))))))))))
+    (Constant0 (some (ValueOf DefaultUniInteger (unsafeCoerce 0))))))))
