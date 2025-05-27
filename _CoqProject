@@ -10,6 +10,7 @@ src/Examples/Timelock/Typing.v
 src/Examples/Timelock/Trace.v
 src/Examples/TimelockDumps.v
 src/Examples/ListSpec.v
+src/Examples/MaybeFun.v
 src/PlutusIR.v
 src/PlutusIR/Folds.v
 src/PlutusIR/Extract.v
