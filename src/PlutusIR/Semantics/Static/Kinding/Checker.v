@@ -258,6 +258,13 @@ Section ty__ind_set.
 
 End ty__ind_set.
 
+(* Axiomatized so we can run typechecker on programs without TYSOP*)
+Axiom kind_checking_sound_set_TySOP : forall x l Delta,
+ForallT
+  (ForallT
+  (fun T : ty => Delta |-*s T : Kind_Base))
+  (x :: l).
+
 (* Identical to the above, but for Set*)
 Theorem kind_checking_sound_set : forall Delta ty kind,
     kind_check Delta ty = Some kind -> has_kind_set Delta ty kind.
@@ -328,8 +335,10 @@ Proof.
       clear H1.
       inversion H; subst; auto.
       constructor.
+      apply kind_checking_sound_set_TySOP.
       (* ADMIT: Ty_SOP ForallT_Forall necessary? Prop vs Type *)
-Admitted.
+Qed.
+  
 
 Lemma kind_checking_complete_TYSOP Tss Δ : 
         Forall
@@ -371,7 +380,7 @@ Theorem kind_checking_complete : forall (Delta : list (binderTyname * kind)) (ty
     has_kind Delta ty kind -> kind_check Delta ty = Some kind.
 Proof.
     intros Delta ty kind Hkind.
-    induction Hkind using Kinding.has_kind_ind'; simpl.
+    induction Hkind using Kinding.has_kind__ind; simpl.
     - (* Var *)
       apply H.
     - (* Ty_Fun *)

@@ -25,5 +25,6 @@ Extract Constant show_Z => "show".
 
 (* Tell Coq how to extract pairs to Haskell tuples *)
 
+
 Extraction Language Haskell.
 Redirect "ast.hs" Recursive Extraction ast_ty.

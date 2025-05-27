@@ -459,6 +459,19 @@ data DefaultFun =
  | Blake2b_224
  | IntegerToByteString
  | ByteStringToInteger
+ | XorByteString
+ | WriteBits
+ | ShiftByteString
+ | RotateByteString
+ | Ripemd_160
+ | ReplicateByte
+ | ReadBit
+ | OrByteString
+ | FindFirstSetBit
+ | ExpModInteger
+ | CountSetBits
+ | ComplementByteString
+ | AndByteString
  deriving (Prelude.Show)
 
 type Name = Prelude.String
@@ -493,7 +506,7 @@ data Ty =
  | Ty_Lam BinderTyname Kind Ty
  | Ty_App Ty Ty
  | Ty_SOP (([]) (([]) Ty))
-  deriving (Prelude.Show)
+ deriving (Prelude.Show)
 
 ty_rect :: (Tyname -> a1) -> (Ty -> a1 -> Ty -> a1 -> a1) -> (Ty -> a1 -> Ty
            -> a1 -> a1) -> (BinderTyname -> Kind -> Ty -> a1 -> a1) ->
@@ -725,58 +738,6 @@ some :: a1 -> a1
 some x =
   x
 
-xorByteString :: DefaultFun
-xorByteString =
-  AddInteger
-
-writeBits :: DefaultFun
-writeBits =
-  AddInteger
-
-shiftByteString :: DefaultFun
-shiftByteString =
-  AddInteger
-
-rotateByteString :: DefaultFun
-rotateByteString =
-  AddInteger
-
-ripemd_160 :: DefaultFun
-ripemd_160 =
-  AddInteger
-
-replicateByte :: DefaultFun
-replicateByte =
-  AddInteger
-
-readBit :: DefaultFun
-readBit =
-  AddInteger
-
-orByteString :: DefaultFun
-orByteString =
-  AddInteger
-
-findFirstSetBit :: DefaultFun
-findFirstSetBit =
-  AddInteger
-
-expModInteger :: DefaultFun
-expModInteger =
-  AddInteger
-
-countSetBits :: DefaultFun
-countSetBits =
-  AddInteger
-
-complementByteString :: DefaultFun
-complementByteString =
-  AddInteger
-
-andByteString :: DefaultFun
-andByteString =
-  AddInteger
-
 substituteT :: Prelude.String -> Ty -> Ty -> Ty
 substituteT x u t =
   case t of {
@@ -918,7 +879,7 @@ data Has_kind_set =
                                                              (ForallT 
                                                              Ty Has_kind_set))
 
-has_kind_set_ind' :: ((([]) ((,) Prelude.String Kind)) -> Prelude.String ->
+has_kind_set__ind :: ((([]) ((,) Prelude.String Kind)) -> Prelude.String ->
                      Kind -> () -> a1) -> ((([]) ((,) BinderTyname Kind)) ->
                      Ty -> Ty -> a1 -> a1 -> a1) -> ((([])
                      ((,) BinderTyname Kind)) -> Ty -> Ty -> Kind -> a1 -> a1
@@ -929,13 +890,66 @@ has_kind_set_ind' :: ((([]) ((,) Prelude.String Kind)) -> Prelude.String ->
                      -> Ty -> Kind -> a1 -> a1) -> ((([])
                      ((,) BinderTyname Kind)) -> Ty -> Ty -> Kind -> Kind ->
                      a1 -> a1 -> a1) -> ((([]) ((,) BinderTyname Kind)) ->
-                     (([]) (([]) Ty)) -> (ForallT (([]) Ty)
-                     (ForallT Ty Has_kind_set)) -> (ForallT (([]) Ty)
-                     (ForallT Ty a1)) -> a1) -> (([])
-                     ((,) BinderTyname Kind)) -> Ty -> Kind -> Has_kind_set
-                     -> a1
-has_kind_set_ind' =
-  Prelude.error "AXIOM TO BE REALIZED (PlutusCert.PlutusIR.Semantics.Static.Kinding.Kinding.has_kind_set_ind')"
+                     (([]) (([]) Ty)) -> (ForallT (([]) Ty) (ForallT Ty a1))
+                     -> a1) -> (([]) ((,) BinderTyname Kind)) -> Ty -> Kind
+                     -> Has_kind_set -> a1
+has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set h_Builtin_set h_Lam_set h_App_set h_SOP_set _ _ _ hK =
+  case hK of {
+   K_Var_set _UU0394_ x k -> h_Var_set _UU0394_ x k __;
+   K_Fun_set _UU0394_ t1 t2 hK1 hK2 ->
+    h_Fun_set _UU0394_ t1 t2
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ t1 Kind_Base
+        hK1)
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ t2 Kind_Base
+        hK2);
+   K_IFix_set _UU0394_ f0 t k hKT hKF ->
+    h_IFix_set _UU0394_ f0 t k
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ t k hKT)
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ f0 (Kind_Arrow
+        (Kind_Arrow k Kind_Base) (Kind_Arrow k Kind_Base)) hKF);
+   K_Forall_set _UU0394_ x k t hKT ->
+    h_Forall_set _UU0394_ x k t
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set ((:) ((,) x k) _UU0394_)
+        t Kind_Base hKT);
+   K_Builtin_set _UU0394_ t -> h_Builtin_set _UU0394_ t __;
+   K_Lam_set _UU0394_ x k1 t k2 hKT ->
+    h_Lam_set _UU0394_ x k1 t k2
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set ((:) ((,) x k1) _UU0394_)
+        t k2 hKT);
+   K_App_set _UU0394_ t1 t2 k1 k2 hK1 hK2 ->
+    h_App_set _UU0394_ t1 t2 k1 k2
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ t1 (Kind_Arrow
+        k1 k2) hK1)
+      (has_kind_set__ind h_Var_set h_Fun_set h_IFix_set h_Forall_set
+        h_Builtin_set h_Lam_set h_App_set h_SOP_set _UU0394_ t2 k1 hK2);
+   K_SOP_set _UU0394_ tss hForallT ->
+    h_SOP_set _UU0394_ tss
+      (let {
+        map_outer _ h =
+          case h of {
+           ForallT_nil -> ForallT_nil;
+           ForallT_cons x l hts hrest ->
+            let {
+             map_inner = let {
+                          map_inner _ hts0 =
+                            case hts0 of {
+                             ForallT_nil -> ForallT_nil;
+                             ForallT_cons x0 l0 ht hts' -> ForallT_cons x0 l0
+                              (has_kind_set__ind h_Var_set h_Fun_set
+                                h_IFix_set h_Forall_set h_Builtin_set
+                                h_Lam_set h_App_set h_SOP_set _UU0394_ x0
+                                Kind_Base ht) (map_inner l0 hts')}}
+                         in map_inner}
+            in
+            ForallT_cons x l (map_inner x hts) (map_outer l hrest)}}
+       in map_outer tss hForallT)}
 
 kind_check_default_uni :: DefaultUni -> Prelude.Maybe Kind
 kind_check_default_uni d =
@@ -1049,10 +1063,166 @@ kind_check delta ty =
      Prelude.True -> Prelude.Just Kind_Base;
      Prelude.False -> Prelude.Nothing}}
 
+ty__ind_set :: (Tyname -> a1) -> (Ty -> Ty -> a1 -> a1 -> a1) -> (Ty -> Ty ->
+               a1 -> a1 -> a1) -> (BinderTyname -> Kind -> Ty -> a1 -> a1) ->
+               (DefaultUni -> a1) -> (BinderTyname -> Kind -> Ty -> a1 -> a1)
+               -> (Ty -> Ty -> a1 -> a1 -> a1) -> ((([]) (([]) Ty)) ->
+               (ForallT (([]) Ty) (ForallT Ty a1)) -> a1) -> Ty -> a1
+ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP t =
+  case t of {
+   Ty_Var x -> h_Var x;
+   Ty_Fun t1 t2 ->
+    h_Fun t1 t2
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t1)
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t2);
+   Ty_IFix f0 t0 ->
+    h_IFix f0 t0
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        f0)
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t0);
+   Ty_Forall x k t0 ->
+    h_Forall x k t0
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t0);
+   Ty_Builtin t0 -> h_Builtin t0;
+   Ty_Lam x k t0 ->
+    h_Lam x k t0
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t0);
+   Ty_App t1 t2 ->
+    h_App t1 t2
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t1)
+      (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam h_App h_SOP
+        t2);
+   Ty_SOP tss ->
+    h_SOP tss
+      (let {
+        list_list_ind tss0 =
+          case tss0 of {
+           ([]) -> ForallT_nil;
+           (:) ts tss' -> ForallT_cons ts tss'
+            (let {
+              list_ind ts0 =
+                case ts0 of {
+                 ([]) -> ForallT_nil;
+                 (:) t0 ts' -> ForallT_cons t0 ts'
+                  (ty__ind_set h_Var h_Fun h_IFix h_Forall h_Builtin h_Lam
+                    h_App h_SOP t0) (list_ind ts')}}
+             in list_ind ts) (list_list_ind tss')}}
+       in list_list_ind tss)}
+
+kind_checking_sound_set_TySOP :: (([]) Ty) -> (([]) (([]) Ty)) -> (([])
+                                 ((,) BinderTyname Kind)) -> ForallT
+                                 (([]) Ty) (ForallT Ty Has_kind_set)
+kind_checking_sound_set_TySOP =
+  Prelude.error "AXIOM TO BE REALIZED (PlutusCert.PlutusIR.Semantics.Static.Kinding.Checker.kind_checking_sound_set_TySOP)"
+
 kind_checking_sound_set :: (([]) ((,) BinderTyname Kind)) -> Ty -> Kind ->
                            Has_kind_set
-kind_checking_sound_set =
-  Prelude.error "AXIOM TO BE REALIZED (PlutusCert.PlutusIR.Semantics.Static.Kinding.Checker.kind_checking_sound_set)"
+kind_checking_sound_set delta ty kind =
+  ty__ind_set (\x delta0 kind0 _ -> K_Var_set delta0 x kind0)
+    (\ty1 ty2 iHty1 iHty2 delta0 _ _ ->
+    let {o = kind_check delta0 ty1} in
+    case o of {
+     Prelude.Just k ->
+      case k of {
+       Kind_Base ->
+        let {o0 = kind_check delta0 ty2} in
+        case o0 of {
+         Prelude.Just k0 ->
+          case k0 of {
+           Kind_Base -> K_Fun_set delta0 ty1 ty2 (iHty1 delta0 Kind_Base __)
+            (iHty2 delta0 Kind_Base __);
+           Kind_Arrow _ _ -> false_rec};
+         Prelude.Nothing -> false_rec};
+       Kind_Arrow _ _ -> false_rec};
+     Prelude.Nothing -> false_rec}) (\ty1 ty2 iHty1 iHty2 delta0 _ _ ->
+    let {o = kind_check delta0 ty2} in
+    case o of {
+     Prelude.Just k ->
+      let {o0 = kind_check delta0 ty1} in
+      case o0 of {
+       Prelude.Just k0 ->
+        case k0 of {
+         Kind_Base -> false_rec;
+         Kind_Arrow k1 k2 ->
+          case k1 of {
+           Kind_Base -> false_rec;
+           Kind_Arrow k3 k4 ->
+            case k4 of {
+             Kind_Base ->
+              case k2 of {
+               Kind_Base -> false_rec;
+               Kind_Arrow k5 k6 ->
+                case k6 of {
+                 Kind_Base ->
+                  let {b = (Prelude.&&) (kind_eqb k k3) (kind_eqb k k5)} in
+                  case b of {
+                   Prelude.True -> K_IFix_set delta0 ty1 ty2 k
+                    (iHty2 delta0 k __)
+                    (iHty1 delta0 (Kind_Arrow (Kind_Arrow k Kind_Base)
+                      (Kind_Arrow k Kind_Base)) __);
+                   Prelude.False -> false_rec};
+                 Kind_Arrow _ _ -> false_rec}};
+             Kind_Arrow _ _ -> false_rec}}};
+       Prelude.Nothing -> false_rec};
+     Prelude.Nothing -> false_rec}) (\x k ty0 iHty delta0 _ _ ->
+    let {o = kind_check ((:) ((,) x k) delta0) ty0} in
+    case o of {
+     Prelude.Just k0 ->
+      case k0 of {
+       Kind_Base -> K_Forall_set delta0 x k ty0
+        (iHty ((:) ((,) x k) delta0) Kind_Base __);
+       Kind_Arrow _ _ -> false_rec};
+     Prelude.Nothing -> false_rec}) (\t delta0 _ _ ->
+    let {o = kind_check_default_uni t} in
+    case o of {
+     Prelude.Just k ->
+      case k of {
+       Kind_Base -> K_Builtin_set delta0 t;
+       Kind_Arrow _ _ -> false_rec};
+     Prelude.Nothing -> false_rec}) (\x k ty0 iHty delta0 _ _ ->
+    let {o = kind_check ((:) ((,) x k) delta0) ty0} in
+    case o of {
+     Prelude.Just k0 -> K_Lam_set delta0 x k ty0 k0
+      (iHty ((:) ((,) x k) delta0) k0 __);
+     Prelude.Nothing -> false_rec}) (\ty1 ty2 iHty1 iHty2 delta0 kind0 _ ->
+    let {k1 = kind_check delta0 ty2} in
+    case k1 of {
+     Prelude.Just k ->
+      let {o = kind_check delta0 ty1} in
+      case o of {
+       Prelude.Just k0 ->
+        case k0 of {
+         Kind_Base -> false_rec;
+         Kind_Arrow k2 _ ->
+          let {b = kind_eqb k2 k} in
+          case b of {
+           Prelude.True -> K_App_set delta0 ty1 ty2 k kind0
+            (iHty1 delta0 (Kind_Arrow k kind0) __) (iHty2 delta0 k __);
+           Prelude.False -> false_rec}};
+       Prelude.Nothing -> false_rec};
+     Prelude.Nothing -> false_rec}) (\tss h delta0 _ _ ->
+    let {
+     b = forallb (\ts ->
+           forallb (\t ->
+             case kind_check delta0 t of {
+              Prelude.Just k ->
+               case k of {
+                Kind_Base -> Prelude.True;
+                Kind_Arrow _ _ -> Prelude.False};
+              Prelude.Nothing -> Prelude.False}) ts) tss}
+    in
+    case b of {
+     Prelude.True -> K_SOP_set delta0 tss
+      (case h of {
+        ForallT_nil -> ForallT_nil;
+        ForallT_cons x l _ _ -> kind_checking_sound_set_TySOP x l delta0});
+     Prelude.False -> false_rec}) ty delta kind __
 
 prop_to_type :: (([]) ((,) BinderTyname Kind)) -> Ty -> Kind -> Has_kind_set
 prop_to_type =
@@ -8270,7 +8440,7 @@ f_preserves_step s s' h =
 f_preserves_kind :: (([]) ((,) BinderTyname Kind)) -> Ty -> Kind -> Has_kind
 f_preserves_kind _UU0394_ s k =
   let {h = prop_to_type _UU0394_ s k} in
-  has_kind_set_ind' (\_UU0394_0 x k0 _ -> K_Var _UU0394_0 x k0)
+  has_kind_set__ind (\_UU0394_0 x k0 _ -> K_Var _UU0394_0 x k0)
     (\_UU0394_0 t1 t2 iHhas_kind_set iHhas_kind_set0 -> K_Fun _UU0394_0
     (let {
       f0 t =
@@ -8395,20 +8565,16 @@ f_preserves_kind _UU0394_ s k =
           fold_right (\ts acc ->
             fold_right (\t0 acc2 -> Tmbin Fun (f0 t0) acc2) acc ts)
             (Tmbuiltin DefaultUniInteger) tss}}
-     in f0 t2) k1 k2 iHhas_kind_set iHhas_kind_set0) (\_UU0394_0 tss h0 h1 ->
-    list_rec (\_ _ -> K_Builtin _UU0394_0 DefaultUniInteger)
-      (\a tss0 iHTss h2 h3 ->
-      list_rec (\h4 h5 ->
+     in f0 t2) k1 k2 iHhas_kind_set iHhas_kind_set0) (\_UU0394_0 tss h0 ->
+    list_rec (\_ -> K_Builtin _UU0394_0 DefaultUniInteger)
+      (\a tss0 iHTss h1 ->
+      list_rec (\h2 ->
         iHTss
-          (case h4 of {
+          (case h2 of {
             ForallT_nil -> false_rec;
             ForallT_cons x l x0 x1 ->
-             eq_rec_r ([]) (\_ -> eq_rec_r tss0 (\_ h6 -> h6) l) x __ x0 x1})
-          (case h5 of {
-            ForallT_nil -> false_rec;
-            ForallT_cons x l x0 x1 ->
-             eq_rec_r ([]) (\_ -> eq_rec_r tss0 (\_ h6 -> h6) l) x __ x0 x1}))
-        (\a0 a1 iHa h4 h5 -> K_Fun _UU0394_0 (f a0)
+             eq_rec_r ([]) (\_ -> eq_rec_r tss0 (\_ h3 -> h3) l) x __ x0 x1}))
+        (\a0 a1 iHa h2 -> K_Fun _UU0394_0 (f a0)
         (let {
           fold_right0 l =
             case l of {
@@ -8418,53 +8584,32 @@ f_preserves_kind _UU0394_ s k =
                 (Tmbuiltin DefaultUniInteger) tss0;
              (:) b t -> Tmbin Fun (f b) (fold_right0 t)}}
          in fold_right0 a1)
-        (case h5 of {
+        (case h2 of {
           ForallT_nil -> false_rec;
           ForallT_cons x l x0 x1 ->
            eq_rec_r ((:) a0 a1) (\_ ->
-             eq_rec_r tss0 (\h6 _ ->
-               case h6 of {
+             eq_rec_r tss0 (\h3 _ ->
+               case h3 of {
                 ForallT_nil -> false_rec;
                 ForallT_cons x2 l0 x3 x4 ->
-                 eq_rec_r a0 (\_ -> eq_rec_r a1 (\h7 _ -> h7) l0) x2 __ x3 x4})
+                 eq_rec_r a0 (\_ -> eq_rec_r a1 (\h4 _ -> h4) l0) x2 __ x3 x4})
                l) x __ x0 x1})
         (iHa (ForallT_cons a1 tss0
-          (case h4 of {
+          (case h2 of {
             ForallT_nil -> false_rec;
             ForallT_cons x l x0 x1 ->
              eq_rec_r ((:) a0 a1) (\_ ->
-               eq_rec_r tss0 (\h6 _ ->
-                 case h6 of {
+               eq_rec_r tss0 (\h3 _ ->
+                 case h3 of {
                   ForallT_nil -> false_rec;
                   ForallT_cons x2 l0 x3 x4 ->
-                   eq_rec_r a0 (\_ -> eq_rec_r a1 (\_ h8 -> h8) l0) x2 __ x3
+                   eq_rec_r a0 (\_ -> eq_rec_r a1 (\_ h7 -> h7) l0) x2 __ x3
                      x4}) l) x __ x0 x1})
-          (case h4 of {
+          (case h2 of {
             ForallT_nil -> false_rec;
             ForallT_cons x l x0 x1 ->
-             eq_rec_r ((:) a0 a1) (\_ -> eq_rec_r tss0 (\_ h6 -> h6) l) x __
-               x0 x1}))
-          (case h5 of {
-            ForallT_nil -> false_rec;
-            ForallT_cons x l x0 x1 ->
-             eq_rec_r ((:) a0 a1) (\_ ->
-               eq_rec_r tss0 (\h6 h7 -> ForallT_cons a1 tss0
-                 (case h4 of {
-                   ForallT_nil -> false_rec;
-                   ForallT_cons x2 l0 x3 x4 ->
-                    eq_rec_r ((:) a0 a1) (\_ ->
-                      eq_rec_r tss0 (\_ _ ->
-                        case h6 of {
-                         ForallT_nil -> false_rec;
-                         ForallT_cons x5 l1 x6 x7 ->
-                          eq_rec_r a0 (\_ -> eq_rec_r a1 (\_ h12 -> h12) l1)
-                            x5 __ x6 x7}) l0) x2 __ x3 x4})
-                 (case h4 of {
-                   ForallT_nil -> false_rec;
-                   ForallT_cons x2 l0 x3 x4 ->
-                    eq_rec_r ((:) a0 a1) (\_ ->
-                      eq_rec_r tss0 (\_ _ -> h7) l0) x2 __ x3 x4})) l) x __
-               x0 x1}))) a h2 h3) tss h0 h1) _UU0394_ s k h
+             eq_rec_r ((:) a0 a1) (\_ -> eq_rec_r tss0 (\_ h3 -> h3) l) x __
+               x0 x1})))) a h1) tss h0) _UU0394_ s k h
 
 sn_preimage2 :: (Ty -> Term0) -> Ty -> (Ty -> Ty -> a1 -> a2) -> (Sn 
                 Term0 a2) -> Sn Ty a1
@@ -8843,6 +8988,40 @@ to_sig f0 =
     DefaultUniByteString)));
    IfThenElse -> BS_Forall "A" Kind_Base (BS_Fun (Ty_Builtin DefaultUniBool)
     (BS_Fun (Ty_Var "A") (BS_Fun (Ty_Var "A") (BS_Result (Ty_Var "A")))));
+   XorByteString -> BS_Fun (Ty_Builtin DefaultUniBool) (BS_Fun (Ty_Builtin
+    DefaultUniByteString) (BS_Fun (Ty_Builtin DefaultUniByteString)
+    (BS_Result (Ty_Builtin DefaultUniByteString))));
+   WriteBits -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Fun (Ty_Builtin
+    (DefaultUniApply DefaultUniProtoList DefaultUniInteger)) (BS_Fun
+    (Ty_Builtin DefaultUniBool) (BS_Result (Ty_Builtin
+    DefaultUniByteString))));
+   ShiftByteString -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Fun
+    (Ty_Builtin DefaultUniInteger) (BS_Result (Ty_Builtin
+    DefaultUniByteString)));
+   RotateByteString -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Fun
+    (Ty_Builtin DefaultUniInteger) (BS_Result (Ty_Builtin
+    DefaultUniByteString)));
+   Ripemd_160 -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Result
+    (Ty_Builtin DefaultUniByteString));
+   ReplicateByte -> BS_Fun (Ty_Builtin DefaultUniInteger) (BS_Fun (Ty_Builtin
+    DefaultUniInteger) (BS_Result (Ty_Builtin DefaultUniByteString)));
+   ReadBit -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Fun (Ty_Builtin
+    DefaultUniInteger) (BS_Result (Ty_Builtin DefaultUniBool)));
+   OrByteString -> BS_Fun (Ty_Builtin DefaultUniBool) (BS_Fun (Ty_Builtin
+    DefaultUniByteString) (BS_Fun (Ty_Builtin DefaultUniByteString)
+    (BS_Result (Ty_Builtin DefaultUniByteString))));
+   FindFirstSetBit -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Result
+    (Ty_Builtin DefaultUniInteger));
+   ExpModInteger -> BS_Fun (Ty_Builtin DefaultUniInteger) (BS_Fun (Ty_Builtin
+    DefaultUniInteger) (BS_Fun (Ty_Builtin DefaultUniInteger) (BS_Result
+    (Ty_Builtin DefaultUniInteger))));
+   CountSetBits -> BS_Fun (Ty_Builtin DefaultUniByteString) (BS_Result
+    (Ty_Builtin DefaultUniInteger));
+   ComplementByteString -> BS_Fun (Ty_Builtin DefaultUniByteString)
+    (BS_Result (Ty_Builtin DefaultUniByteString));
+   AndByteString -> BS_Fun (Ty_Builtin DefaultUniBool) (BS_Fun (Ty_Builtin
+    DefaultUniByteString) (BS_Fun (Ty_Builtin DefaultUniByteString)
+    (BS_Result (Ty_Builtin DefaultUniByteString))));
    _ -> BS_Fun (Ty_Builtin DefaultUniInteger) (BS_Result (Ty_Builtin
     DefaultUniInteger))}
 
@@ -9210,7 +9389,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       1)))))))) (Ty_Fun (Ty_Builtin DefaultUniBool) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_Builtin DefaultUniByteString)
-    (Ty_Builtin DefaultUniByteString))))) (Builtin xorByteString)) ([])) (Let
+    (Ty_Builtin DefaultUniByteString))))) (Builtin XorByteString)) ([])) (Let
     NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
@@ -9218,7 +9397,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_App (Ty_Builtin DefaultUniProtoList)
     (Ty_Builtin DefaultUniInteger)) (Ty_Fun (Ty_Builtin DefaultUniBool)
-    (Ty_Builtin DefaultUniByteString))))) (Builtin writeBits)) ([])) (Let
+    (Ty_Builtin DefaultUniByteString))))) (Builtin WriteBits)) ([])) (Let
     NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
@@ -9362,7 +9541,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Builtin
-    DefaultUniByteString)))) (Builtin shiftByteString)) ([])) (Let NonRec
+    DefaultUniByteString)))) (Builtin ShiftByteString)) ([])) (Let NonRec
     ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
@@ -9387,20 +9566,20 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Builtin
-    DefaultUniByteString)))) (Builtin rotateByteString)) ([])) (Let NonRec
+    DefaultUniByteString)))) (Builtin RotateByteString)) ([])) (Let NonRec
     ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
       1))))))))) (Ty_Fun (Ty_Builtin DefaultUniByteString) (Ty_Builtin
-    DefaultUniByteString))) (Builtin ripemd_160)) ([])) (Let NonRec ((:)
+    DefaultUniByteString))) (Builtin Ripemd_160)) ([])) (Let NonRec ((:)
     (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       1)))))))) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Fun (Ty_Builtin
     DefaultUniInteger) (Ty_Builtin DefaultUniByteString)))) (Builtin
-    replicateByte)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    ReplicateByte)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))) (Ty_Fun (Ty_Builtin
@@ -9412,7 +9591,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Builtin
-    DefaultUniBool)))) (Builtin readBit)) ([])) (Let NonRec ((:) (TermBind
+    DefaultUniBool)))) (Builtin ReadBit)) ([])) (Let NonRec ((:) (TermBind
     Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
@@ -9425,7 +9604,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniBool) (Ty_Fun (Ty_Builtin DefaultUniByteString) (Ty_Fun
     (Ty_Builtin DefaultUniByteString) (Ty_Builtin DefaultUniByteString)))))
-    (Builtin orByteString)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    (Builtin OrByteString)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
@@ -9992,7 +10171,7 @@ ast =
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) 1))))))))) (Ty_Fun
     (Ty_Builtin DefaultUniByteString) (Ty_Builtin DefaultUniInteger)))
-    (Builtin findFirstSetBit)) ([])) (Let NonRec ((:) (TermBind Strict
+    (Builtin FindFirstSetBit)) ([])) (Let NonRec ((:) (TermBind Strict
     (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x)
@@ -10005,7 +10184,7 @@ ast =
       ((\x -> 2 Prelude.* x) 1))))))))) (Ty_Fun (Ty_Builtin
     DefaultUniInteger) (Ty_Fun (Ty_Builtin DefaultUniInteger) (Ty_Fun
     (Ty_Builtin DefaultUniInteger) (Ty_Builtin DefaultUniInteger)))))
-    (Builtin expModInteger)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    (Builtin ExpModInteger)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       1))))) (Ty_Forall
@@ -10079,7 +10258,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Builtin DefaultUniInteger))) (Builtin
-    countSetBits)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    CountSetBits)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) 1))))))) (Ty_Fun
@@ -10091,7 +10270,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Builtin DefaultUniByteString))) (Builtin
-    complementByteString)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
+    ComplementByteString)) ([])) (Let NonRec ((:) (TermBind Strict (VarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x Prelude.+ 1) ((\x -> 2 Prelude.* x Prelude.+ 1)
       ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))
@@ -10503,7 +10682,7 @@ ast =
       ((\x -> 2 Prelude.* x Prelude.+ 1) 1)))))))) (Ty_Fun (Ty_Builtin
     DefaultUniBool) (Ty_Fun (Ty_Builtin DefaultUniByteString) (Ty_Fun
     (Ty_Builtin DefaultUniByteString) (Ty_Builtin DefaultUniByteString)))))
-    (Builtin andByteString)) ([])) (Let NonRec ((:) (TypeBind (TyVarDecl
+    (Builtin AndByteString)) ([])) (Let NonRec ((:) (TypeBind (TyVarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x Prelude.+ 1) 1))) Kind_Base)
     (Ty_Builtin DefaultUniUnit)) ([])) (Let NonRec ((:) (TypeBind (TyVarDecl
     (show_Z ((\x -> x) ((\x -> 2 Prelude.* x) ((\x -> 2 Prelude.* x) 1))))
@@ -10537,22 +10716,15 @@ ast_ty :: Prelude.Maybe Ty
 ast_ty =
   type_check ([]) ([]) ast
 
--- Normaliser and kind_check work on this.
-my_ty :: Ty
-my_ty = (Ty_Fun (Ty_Builtin DefaultUniBool) (Ty_Fun (Ty_Builtin
+
+small :: Term
+small = Let NonRec ((:) (TermBind Strict (VarDecl
+    "x" (Ty_Fun (Ty_Builtin DefaultUniBool) (Ty_Fun (Ty_Builtin
     DefaultUniByteString) (Ty_Fun (Ty_Builtin DefaultUniByteString)
-    (Ty_Builtin DefaultUniByteString))))
+    (Ty_Builtin DefaultUniByteString))))) (Builtin XorByteString)) ([])) (Var "x")
 
-mini_ast :: Term
-mini_ast = Let NonRec ([TermBind Strict 
-    (VarDecl "a" (Ty_Fun (Ty_Builtin DefaultUniBool) 
-                    (Ty_Fun (Ty_Builtin DefaultUniByteString) 
-                      (Ty_Fun (Ty_Builtin DefaultUniByteString)
-                          (Ty_Builtin DefaultUniByteString))))) 
-                (Builtin xorByteString)]) ((Builtin xorByteString))
-
-minier_ast :: Term
-minier_ast = (Builtin xorByteString)
+term_ty_comp :: Term 
+term_ty_comp = LamAbs "x" (Ty_App (Ty_Lam "A" Kind_Base (Ty_Var "A")) (Ty_Builtin DefaultUniInteger)) (Var "x")
 
 main :: Prelude.IO ()
-main = Prelude.putStrLn "Hello World!"
+main = Prelude.putStrLn "Hello, world!"

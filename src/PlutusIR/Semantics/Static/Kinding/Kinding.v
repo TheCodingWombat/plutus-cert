@@ -83,6 +83,80 @@ Inductive has_kind : list (binderTyname * kind) -> ty -> kind -> Prop :=
       Δ |-* (Ty_SOP Tss) : Kind_Base
 where "Δ '|-*' T ':' K" := (has_kind Δ T K).
 
+Section has_kind__ind.
+
+  Unset Implicit Arguments.
+
+  Variable (P : list (binderTyname * kind) -> ty -> kind -> Prop).
+
+  Context
+    (H_Var : forall Δ X K,
+        lookup X Δ = Some K ->
+        P Δ (Ty_Var X) K)
+    (H_Fun : forall Δ T1 T2,
+        P Δ T1 Kind_Base ->
+        P Δ T2 Kind_Base ->
+        P Δ (Ty_Fun T1 T2) Kind_Base)
+    (H_IFix : forall Δ F T K,
+        P Δ T K ->
+        P Δ F (Kind_Arrow (Kind_Arrow K Kind_Base) (Kind_Arrow K Kind_Base)) ->
+        P Δ (Ty_IFix F T) Kind_Base)
+    (H_Forall : forall Δ X K T,
+        P ((X, K) :: Δ) T Kind_Base ->
+        P Δ (Ty_Forall X K T) Kind_Base)
+    (H_Builtin : forall Δ T,
+        |-*_uni T : Kind_Base ->
+        P Δ (Ty_Builtin T) Kind_Base)
+    (H_Lam : forall Δ X K1 T K2,
+        P ((X, K1) :: Δ) T K2 ->
+        P Δ (Ty_Lam X K1 T) (Kind_Arrow K1 K2))
+    (H_App : forall Δ T1 T2 K1 K2,
+        P Δ T1 (Kind_Arrow K1 K2) ->
+        P Δ T2 K1 ->
+        P Δ (Ty_App T1 T2) K2)
+    (H_SOP : forall Δ Tss,
+        Forall (Forall (fun T => P Δ T Kind_Base)) Tss ->
+        P Δ (Ty_SOP Tss) Kind_Base).
+
+  Fixpoint has_kind__ind Δ T K (HK : Δ |-* T : K) : P Δ T K :=
+    match HK with
+    | K_Var Δ X K Hlookup => H_Var Δ X K Hlookup
+    | K_Fun Δ T1 T2 HK1 HK2 =>
+        H_Fun Δ T1 T2 (has_kind__ind Δ T1 Kind_Base HK1)
+                     (has_kind__ind Δ T2 Kind_Base HK2)
+    | K_IFix Δ F T K HKT HKF =>
+        H_IFix Δ F T K (has_kind__ind Δ T K HKT)
+                       (has_kind__ind Δ F _ HKF)
+    | K_Forall Δ X K T HKT =>
+        H_Forall Δ X K T (has_kind__ind ((X, K) :: Δ) T Kind_Base HKT)
+    | K_Builtin Δ T HUni =>
+        H_Builtin Δ T HUni
+    | K_Lam Δ X K1 T K2 HKT =>
+        H_Lam Δ X K1 T K2 (has_kind__ind ((X, K1) :: Δ) T K2 HKT)
+    | K_App Δ T1 T2 K1 K2 HK1 HK2 =>
+        H_App Δ T1 T2 K1 K2 (has_kind__ind Δ T1 _ HK1)
+                             (has_kind__ind Δ T2 _ HK2)
+    | K_SOP Δ Tss HForall =>
+        H_SOP Δ Tss
+          (let fix forall_ts ts (Hts : Forall (fun T => has_kind Δ T Kind_Base) ts) :
+               Forall (fun T => P Δ T Kind_Base) ts :=
+             match Hts with
+             | Forall_nil _ => Forall_nil _
+             | @Forall_cons _ _ t ts' Ht Hts' =>
+                 @Forall_cons _ _ t ts' (has_kind__ind Δ t Kind_Base Ht) (forall_ts ts' Hts')
+             end in
+           let fix forall_tss tss (Htss : Forall (Forall (fun T => has_kind Δ T Kind_Base)) tss) :
+               Forall (Forall (fun T => P Δ T Kind_Base)) tss :=
+             match Htss with
+             | Forall_nil _ => Forall_nil _
+             | @Forall_cons _ _ ts tss' Hts Htss' =>
+                 @Forall_cons _ _ ts tss' (forall_ts ts Hts) (forall_tss tss' Htss')
+             end in
+           forall_tss Tss HForall)
+    end.
+
+End has_kind__ind.
+
 Local Open Scope string_scope.
 
 (* TODO: there is probably a higher order thing to create stuff like this *)
@@ -136,198 +210,109 @@ Inductive has_kind_set : list (binderTyname * kind) -> ty -> kind -> Set :=
       Δ |-*s (Ty_SOP Tss) : Kind_Base
 where "Δ '|-*s' T ':' K" := (has_kind_set Δ T K).
 
+Section has_kind_set__ind.
 
-Section has_kind_prop_induction.
+  Unset Implicit Arguments.
 
-Variable P : list (binderTyname * kind) -> ty -> kind -> Prop.
+  Variable (P : list (binderTyname * kind) -> ty -> kind -> Set).
 
-Hypothesis K_Var_case : forall Δ X K,
-  lookup X Δ = Some K ->
-  P Δ (Ty_Var X) K.
+  (* The following are the induction hypotheses for each constructor of has_kind_set *)
+  (* They are used to prove the inductive step in has_kind_set__ind *)
 
-Hypothesis K_Fun_case : forall Δ T1 T2,
-  P Δ T1 Kind_Base ->
-  P Δ T2 Kind_Base ->
-  P Δ (Ty_Fun T1 T2) Kind_Base.
+Context
+  (H_Var_set :
+     forall Δ X K,
+       lookup X Δ = Some K ->
+       P Δ (Ty_Var X) K)
+  (H_Fun_set :
+     forall Δ T1 T2,
+       P Δ T1 Kind_Base ->
+       P Δ T2 Kind_Base ->
+       P Δ (Ty_Fun T1 T2) Kind_Base)
+  (H_IFix_set :
+     forall Δ F T K,
+       P Δ T K ->
+       P Δ F (Kind_Arrow (Kind_Arrow K Kind_Base) (Kind_Arrow K Kind_Base)) ->
+       P Δ (Ty_IFix F T) Kind_Base)
+  (H_Forall_set :
+     forall Δ X K T,
+       P ((X, K) :: Δ) T Kind_Base ->
+       P Δ (Ty_Forall X K T) Kind_Base)
+  (H_Builtin_set :
+     forall Δ T,
+       |-*_uni T : Kind_Base ->
+       P Δ (Ty_Builtin T) Kind_Base)
+  (H_Lam_set :
+     forall Δ X K1 T K2,
+       P ((X, K1) :: Δ) T K2 ->
+       P Δ (Ty_Lam X K1 T) (Kind_Arrow K1 K2))
+  (H_App_set :
+     forall Δ T1 T2 K1 K2,
+       P Δ T1 (Kind_Arrow K1 K2) ->
+       P Δ T2 K1 ->
+       P Δ (Ty_App T1 T2) K2)
+  (H_SOP_set :
+     forall Δ Tss,
+       ForallT (ForallT (fun T => P Δ T Kind_Base)) Tss ->
+       P Δ (Ty_SOP Tss) Kind_Base).
 
-Hypothesis K_IFix_case : forall Δ F T K,
-  P Δ T K ->
-  P Δ F (Kind_Arrow (Kind_Arrow K Kind_Base) (Kind_Arrow K Kind_Base)) ->
-  P Δ (Ty_IFix F T) Kind_Base.
-
-Hypothesis K_Forall_case : forall Δ X K T,
-  P ((X, K) :: Δ) T Kind_Base ->
-  P Δ (Ty_Forall X K T) Kind_Base.
-
-Hypothesis K_Builtin_case : forall Δ T,
-  (|-*_uni T : Kind_Base) ->
-  P Δ (Ty_Builtin T) Kind_Base.
-
-Hypothesis K_Lam_case : forall Δ X K1 T K2,
-  P ((X, K1) :: Δ) T K2 ->
-  P Δ (Ty_Lam X K1 T) (Kind_Arrow K1 K2).
-
-Hypothesis K_App_case : forall Δ T1 T2 K1 K2,
-  P Δ T1 (Kind_Arrow K1 K2) ->
-  P Δ T2 K1 ->
-  P Δ (Ty_App T1 T2) K2.
-
-Hypothesis K_SOP_case : forall Δ Tss,
-  Forall (Forall (fun T => has_kind Δ T Kind_Base)) Tss ->
-  Forall (Forall (fun T => P Δ T Kind_Base)) Tss ->
-  P Δ (Ty_SOP Tss) Kind_Base.
-
-Fixpoint has_kind_ind'
+Fixpoint has_kind_set__ind
          (Δ : list (binderTyname * kind)) (T : ty) (K : kind)
-         (HK : has_kind Δ T K) : P Δ T K.
-Proof.
-  destruct HK as
-    [Δ X K Hlookup
-    |Δ T1 T2 HK1 HK2
-    |Δ F T K HKT HKF
-    |Δ X K T HKT
-    |Δ T Huni
-    |Δ X K1 T K2 HKT
-    |Δ T1 T2 K1 K2 HK1 HK2
-    |Δ Tss HForall].
+         (HK : has_kind_set Δ T K) : P Δ T K :=
+  match HK with
+  | K_Var_set Δ X K Hlookup =>
+      H_Var_set Δ X K Hlookup
 
-  - apply K_Var_case. assumption.
+  | K_Fun_set Δ T1 T2 HK1 HK2 =>
+      H_Fun_set Δ T1 T2
+        (has_kind_set__ind Δ T1 Kind_Base HK1)
+        (has_kind_set__ind Δ T2 Kind_Base HK2)
 
-  - apply K_Fun_case; [apply has_kind_ind' | apply has_kind_ind']; assumption.
+  | K_IFix_set Δ F T K HKT HKF =>
+      H_IFix_set Δ F T K
+        (has_kind_set__ind Δ T K HKT)
+        (has_kind_set__ind Δ F (Kind_Arrow (Kind_Arrow K Kind_Base) (Kind_Arrow K Kind_Base)) HKF)
 
-  - eapply K_IFix_case;
-      [apply has_kind_ind' | apply has_kind_ind']; eassumption.
+  | K_Forall_set Δ X K T HKT =>
+      H_Forall_set Δ X K T
+        (has_kind_set__ind ((X, K) :: Δ) T Kind_Base HKT)
 
-  - apply K_Forall_case.
-    apply has_kind_ind'. assumption.
+  | K_Builtin_set Δ T Huni =>
+      H_Builtin_set Δ T Huni
 
-  - eapply K_Builtin_case. assumption.
+  | K_Lam_set Δ X K1 T K2 HKT =>
+      H_Lam_set Δ X K1 T K2
+        (has_kind_set__ind ((X, K1) :: Δ) T K2 HKT)
 
-  - apply K_Lam_case.
-    apply has_kind_ind'. assumption.
+  | K_App_set Δ T1 T2 K1 K2 HK1 HK2 =>
+      H_App_set Δ T1 T2 K1 K2
+        (has_kind_set__ind Δ T1 (Kind_Arrow K1 K2) HK1)
+        (has_kind_set__ind Δ T2 K1 HK2)
 
-  - eapply K_App_case;
-      [apply has_kind_ind' | apply has_kind_ind']; eassumption.
+  | K_SOP_set Δ Tss HForallT =>
+      H_SOP_set Δ Tss
+        (let fix map_outer (tss : list (list ty))
+                           (H : ForallT (ForallT (fun T => has_kind_set Δ T Kind_Base)) tss)
+                           : ForallT (ForallT (fun T => P Δ T Kind_Base)) tss :=
+           match H with
+           | ForallT_nil  => ForallT_nil
+           | ForallT_cons Hts Hrest =>
+               let fix map_inner (ts : list ty)
+                                 (Hts : ForallT (fun T => has_kind_set Δ T Kind_Base) ts)
+                                 : ForallT (fun T => P Δ T Kind_Base) ts :=
+                   match Hts with
+                   | ForallT_nil => ForallT_nil
+                   | ForallT_cons Ht Hts' =>
+                       ForallT_cons
+                         (has_kind_set__ind Δ _ Kind_Base Ht)
+                         (map_inner _ Hts')
+                   end
+               in
+               ForallT_cons 
+                 (map_inner _ Hts)
+                 (map_outer _ Hrest)
+           end
+         in map_outer Tss HForallT)
+  end.
 
-  - eapply K_SOP_case.
-    + exact HForall.
-    + (* Build recursive hypotheses over all T in Tss *)
-      revert HForall.
-      clear K_SOP_case.
-      (* specialize (K_SOP_case Δ Tss). *)
-      induction Tss.
-      * constructor.
-      * constructor.
-        induction a.
-        -- constructor.
-        -- constructor; eauto.
-           ++ apply has_kind_ind'; eauto.
-              inversion HForall; subst.
-              inversion H1; subst. auto.
-           ++ eapply IHa.
-              inversion HForall; subst.
-              constructor; auto.
-              inversion H1; subst; auto.
-        -- eapply IHTss; auto.
-              inversion HForall; subst; auto.
-Admitted.
-
-End has_kind_prop_induction.
-
-
-Section has_kind_set_induction.
-
-Variable P : list (binderTyname * kind) -> ty -> kind -> Set.
-
-Hypothesis K_Var_case : forall Δ X K,
-  lookup X Δ = Some K ->
-  P Δ (Ty_Var X) K.
-
-Hypothesis K_Fun_case : forall Δ T1 T2,
-  P Δ T1 Kind_Base ->
-  P Δ T2 Kind_Base ->
-  P Δ (Ty_Fun T1 T2) Kind_Base.
-
-Hypothesis K_IFix_case : forall Δ F T K,
-  P Δ T K ->
-  P Δ F (Kind_Arrow (Kind_Arrow K Kind_Base) (Kind_Arrow K Kind_Base)) ->
-  P Δ (Ty_IFix F T) Kind_Base.
-
-Hypothesis K_Forall_case : forall Δ X K T,
-  P ((X, K) :: Δ) T Kind_Base ->
-  P Δ (Ty_Forall X K T) Kind_Base.
-
-Hypothesis K_Builtin_case : forall Δ T,
-  (|-*_uni T : Kind_Base) ->
-  P Δ (Ty_Builtin T) Kind_Base.
-
-Hypothesis K_Lam_case : forall Δ X K1 T K2,
-  P ((X, K1) :: Δ) T K2 ->
-  P Δ (Ty_Lam X K1 T) (Kind_Arrow K1 K2).
-
-Hypothesis K_App_case : forall Δ T1 T2 K1 K2,
-  P Δ T1 (Kind_Arrow K1 K2) ->
-  P Δ T2 K1 ->
-  P Δ (Ty_App T1 T2) K2.
-
-Hypothesis K_SOP_case : forall Δ Tss,
-  ForallT (ForallT (fun T => has_kind_set Δ T Kind_Base)) Tss ->
-  ForallT (ForallT (fun T => P Δ T Kind_Base)) Tss ->
-  P Δ (Ty_SOP Tss) Kind_Base.
-
-Fixpoint has_kind_set_ind'
-         (Δ : list (binderTyname * kind)) (T : ty) (K : kind)
-         (HK : has_kind_set Δ T K) : P Δ T K.
-Proof.
-  destruct HK as
-    [Δ X K Hlookup
-    |Δ T1 T2 HK1 HK2
-    |Δ F T K HKT HKF
-    |Δ X K T HKT
-    |Δ T Huni
-    |Δ X K1 T K2 HKT
-    |Δ T1 T2 K1 K2 HK1 HK2
-    |Δ Tss HForallT].
-
-  - apply K_Var_case. assumption.
-
-  - apply K_Fun_case; [apply has_kind_set_ind' | apply has_kind_set_ind']; assumption.
-
-  - eapply K_IFix_case;
-      [apply has_kind_set_ind' | apply has_kind_set_ind']; eassumption.
-
-  - apply K_Forall_case.
-    apply has_kind_set_ind'. assumption.
-
-  - eapply K_Builtin_case. assumption.
-
-  - apply K_Lam_case.
-    apply has_kind_set_ind'. assumption.
-
-  - eapply K_App_case;
-      [apply has_kind_set_ind' | apply has_kind_set_ind']; eassumption.
-
-  - eapply K_SOP_case.
-    + exact HForallT.
-    + (* Build recursive hypotheses over all T in Tss *)
-      revert HForallT.
-      clear K_SOP_case.
-      (* specialize (K_SOP_case Δ Tss). *)
-      induction Tss.
-      * constructor.
-      * constructor.
-        induction a.
-        -- constructor.
-        -- constructor; eauto.
-           ++ apply has_kind_set_ind'; eauto.
-              inversion HForallT; subst.
-              inversion H1; subst. auto.
-           ++ eapply IHa.
-              inversion HForallT; subst.
-              constructor; auto.
-              inversion H1; subst; auto.
-        -- eapply IHTss; auto.
-              inversion HForallT; subst; auto.
-Admitted.
-
-End has_kind_set_induction.
+End has_kind_set__ind.

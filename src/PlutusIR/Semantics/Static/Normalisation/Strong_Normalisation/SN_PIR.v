@@ -330,7 +330,7 @@ Theorem f_preserves_kind Δ s K :
 Proof with subst; auto.
   intros.
   apply Checker.prop_to_type in H.
-  induction H using Kinding.has_kind_set_ind'.
+  induction H using Kinding.has_kind_set__ind.
   all: try solve [intros; try econstructor; eauto].
   simpl.
   induction Tss.
@@ -338,20 +338,14 @@ Proof with subst; auto.
   - simpl.
     induction a; auto.
     + eapply IHTss.
-      * inversion H; auto.
-      * inversion H0; auto.
+      inversion H; auto.
     + constructor.
-      * inversion H0. inversion H3; auto.
+      * inversion H; subst. inversion H2; auto.
       * apply IHa.
-        -- constructor.
-           ++ inversion H.
-              inversion H3; auto.
-           ++ inversion H; auto.
-        -- inversion H0; auto.
-           constructor.
-           ++ inversion H.
-              inversion H3; auto.
-           ++ inversion H; auto.
+        constructor.
+        -- inversion H.
+              inversion H2; auto.
+        -- inversion H; auto.
 Qed.
 
 (* Forward simulation *)
