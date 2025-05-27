@@ -47,7 +47,6 @@ Fixpoint sig_arity (s : builtin_sig) : nat :=
   end
 .
 
-
 Local Open Scope string_scope.
 (* Signatures of built-in functions *)
 Definition to_sig (f : DefaultFun) : builtin_sig :=
@@ -63,6 +62,22 @@ Definition to_sig (f : DefaultFun) : builtin_sig :=
   | IfThenElse => BS_Forall "A" Kind_Base (<{bool}> → Ty_Var "A" → Ty_Var "A" → BS_Result (Ty_Var "A"))
 
   | AppendByteString => <{ bytestring }> → <{ bytestring }> → BS_Result <{ bytestring }>
+
+  (* Added by Richard to parse list_spec.v*)
+  (* Based on: https://plutus.cardano.intersectmbo.org/haddock/master/plutus-tx/src/PlutusTx.Builtins.html#xorByteString*)
+  | AndByteString
+  | OrByteString
+  | XorByteString  => (<{bool}> → <{ bytestring }> → <{ bytestring }> → BS_Result <{ bytestring }>)
+  | WriteBits => (<{ bytestring }> → (Ty_Builtin (DefaultUniApply (DefaultUniProtoList) (DefaultUniInteger))) → <{ bool }> → BS_Result <{ bytestring }>)
+  | ShiftByteString 
+  | RotateByteString => <{ bytestring }> → <{ℤ}> → BS_Result <{ bytestring }> 
+  | Ripemd_160 => <{ bytestring }> → BS_Result <{ bytestring }>
+  | ReplicateByte => <{ℤ}> → <{ℤ}> → BS_Result <{ bytestring }>
+  | ReadBit => <{ bytestring }> → <{ℤ}> → BS_Result <{bool}>
+  | FindFirstSetBit => <{ bytestring }> → BS_Result <{ℤ}>
+  | ExpModInteger => <{ℤ}> → <{ℤ}> → <{ℤ}> → BS_Result <{ℤ}>
+  | CountSetBits => <{ bytestring }> → BS_Result <{ℤ}>
+  | ComplementByteString => <{ bytestring }> → BS_Result <{ bytestring }>
 
   (* TODO: see Plutus Core Spec *)
   | _ => <{ℤ}> → BS_Result <{ℤ}>

@@ -245,6 +245,22 @@ Inductive DefaultFun :=
     (* Conversions *)
     | IntegerToByteString
     | ByteStringToInteger
+    
+    (* Added by Richard *)
+    | XorByteString 
+    | WriteBits
+    | ShiftByteString
+    | RotateByteString 
+    | Ripemd_160 
+    | ReplicateByte 
+    | ReadBit 
+    | OrByteString
+    | FindFirstSetBit 
+    | ExpModInteger
+    | CountSetBits 
+    | ComplementByteString 
+    | AndByteString
+
 .
 
 Definition name := string.

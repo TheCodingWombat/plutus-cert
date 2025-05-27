@@ -156,19 +156,6 @@ Module DumpNotations.
   Set Warnings "-abstract-large-number".
 
 (* PLACEHOLDERS *)
-  Definition XorByteString := AddInteger.
-  Definition WriteBits := AddInteger.
-  Definition ShiftByteString := AddInteger.
-  Definition RotateByteString := AddInteger.
-  Definition Ripemd_160 := AddInteger.
-  Definition ReplicateByte := AddInteger.
-  Definition ReadBit := AddInteger.
-  Definition OrByteString := AddInteger.
-  Definition FindFirstSetBit := AddInteger.
-  Definition ExpModInteger := AddInteger.
-  Definition CountSetBits := AddInteger.
-  Definition ComplementByteString := AddInteger.
-  Definition AndByteString := AddInteger.
 
   Definition TySOP := fun (_ : unit) (_ : list (list ty)) => Ty_Var ""%string.
 

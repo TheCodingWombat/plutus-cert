@@ -47,6 +47,7 @@ Lemma lookupBuiltinTy__well_kinded f Δ :
   Δ |-* (lookupBuiltinTy f) : Kind_Base.
 Proof.
   destruct f; repeat constructor.
+  eapply K_DefaultUniApply; constructor.
 Qed.
 
 Lemma has_type__basekinded : forall Delta Gamma t T,
