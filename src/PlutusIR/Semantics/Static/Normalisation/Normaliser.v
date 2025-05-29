@@ -4,7 +4,7 @@ From PlutusCert Require Import
   Kinding.Kinding
   Kinding.Checker
   Type_reduction
-  Static.Util
+  Util
   SubstituteTCA
   SN_PIR
   SN_STLC_GU

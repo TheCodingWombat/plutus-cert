@@ -11,6 +11,9 @@ all: Makefile.coq
 	sed -i 's/GHC.Base.unsafeCoerce/Unsafe.Coerce.unsafeCoerce/' hs-src/PlutusIR/Certifier/Extracted.hs
 	sed -i '/import qualified GHC.Base/a import qualified Unsafe.Coerce' hs-src/PlutusIR/Certifier/Extracted.hs
 
+Makefile.coq:
+	coq_makefile -f _CoqProject -o Makefile.coq
+
 clean: Makefile.coq
 	+make -f Makefile.coq cleanall
 	rm -f Makefile.coq
